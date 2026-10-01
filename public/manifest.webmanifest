@@ -9,7 +9,10 @@
   "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#15803d",
-  "categories": ["health", "lifestyle"],
+  "categories": [
+    "health",
+    "lifestyle"
+  ],
   "icons": [
     {
       "src": "/icon-192.png",
