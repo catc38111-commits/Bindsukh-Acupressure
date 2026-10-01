@@ -1,0 +1,23 @@
+[
+  {
+    "id": "apt-1790393845756-299",
+    "tokenNumber": "BK-0926-001",
+    "patientName": "Rahul Sharma",
+    "patientPhone": "9876543210",
+    "appointmentDate": "2026-09-26",
+    "timeSlot": "09:30 AM - 10:30 AM",
+    "therapy": "Acupressure Therapy",
+    "condition": "Cervical Spondylosis",
+    "visitType": "first_visit",
+    "fee": 500,
+    "paymentMethod": "pay_at_clinic",
+    "paymentStatus": "pending",
+    "status": "scheduled",
+    "createdAt": "2026-09-26T03:37:25.756Z",
+    "reminderChannel": "both",
+    "reminderScheduledFor": "2026-09-25T09:30:00.000Z",
+    "reminderStatus": "scheduled",
+    "reminderMessage": "Namaste Rahul Sharma ji 🙏,\n\nThis is an automated 24-hour reminder for your upcoming clinical appointment at Bindsukh Acupressure & Acupuncture Center (हीलिंग थ्रू टच एंड मैग्नेट), Prayagraj.\n\n📋 Token No: BK-0926-001\n🌿 Therapy: Acupressure Therapy\n📅 Date: 2026-09-26\n⏰ Time Slot: 09:30 AM - 10:30 AM\n👨‍⚕️ Specialist: THERAPIST: SAURABH PRAJAPATI\n📍 Address: Puramufti Purani Bazar, Prayagraj - Near Puramufti Panchayat Bhawan\n📞 Clinic Helpline: +91 9455100097 / +91 8423221799\n\n==============================\n👉 ATTENDANCE CONFIRMATION:\nPlease confirm if you will be attending:\n1. Reply \"CONFIRM BK-0926-001\" directly to this WhatsApp/SMS message.\n2. Or tap here to confirm online instantly:\n/confirm/BK-0926-001\n==============================\n\nPlease arrive 10 minutes before your slot in comfortable loose clothing.",
+    "attendanceStatus": "unconfirmed"
+  }
+]

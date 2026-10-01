@@ -1,0 +1,8 @@
+{
+  "name": "Bindsukh",
+  "description": "Appointment booking, live UPI payment, and clinical management portal for Bindsukh Acupressure & Acupuncture Center (हीलिंग थ्रू टच एंड मैग्नेट), Prayagraj.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

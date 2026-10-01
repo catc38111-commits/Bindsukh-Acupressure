@@ -1,0 +1,5 @@
+additional_user_instructions')
+            if idx != -1:
+                print(f'Found additional_user_instructions at {start+idx:x}!')
+                # let's find the closing tag
+                end_tag = data.find(b'</additional_user_instructions>

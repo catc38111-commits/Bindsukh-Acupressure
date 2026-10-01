@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isValidAppointment(data) {
+      return data.keys().hasAll(['id', 'tokenNumber', 'patientName', 'patientPhone', 'appointmentDate', 'timeSlot', 'therapy', 'fee', 'paymentStatus', 'status', 'createdAt'])
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 100
+        && data.tokenNumber is string && data.tokenNumber.size() > 0 && data.tokenNumber.size() <= 20
+        && data.patientName is string && data.patientName.size() > 0 && data.patientName.size() <= 100
+        && data.patientPhone is string && data.patientPhone.size() >= 10 && data.patientPhone.size() <= 20
+        && data.appointmentDate is string && data.appointmentDate.size() >= 8 && data.appointmentDate.size() <= 20
+        && data.timeSlot is string && data.timeSlot.size() > 0 && data.timeSlot.size() <= 50
+        && data.therapy is string && data.therapy.size() > 0 && data.therapy.size() <= 100
+        && data.fee is number && data.fee >= 0 && data.fee <= 100000
+        && data.paymentStatus in ['pending', 'paid_online', 'collected_at_clinic']
+        && data.status in ['scheduled', 'in-progress', 'completed', 'cancelled']
+        && data.createdAt is string && data.createdAt.size() <= 50;
+    }
+
+    function isValidFeedback(data) {
+      return data.keys().hasAll(['id', 'patientName', 'rating', 'comment', 'createdAt'])
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 100
+        && data.patientName is string && data.patientName.size() > 0 && data.patientName.size() <= 100
+        && data.rating is number && data.rating >= 1 && data.rating <= 5
+        && data.comment is string && data.comment.size() > 0 && data.comment.size() <= 1000
+        && data.createdAt is string && data.createdAt.size() <= 50;
+    }
+
+    match /appointments/{appointmentId} {
+      allow read: if true;
+      allow create: if isValidAppointment(request.resource.data);
+      allow update: if request.resource.data.status in ['scheduled', 'in-progress', 'completed', 'cancelled']
+                    || request.resource.data.paymentStatus in ['pending', 'paid_online', 'collected_at_clinic'];
+      allow delete: if request.auth != null;
+    }
+
+    match /feedbacks/{feedbackId} {
+      allow read: if true;
+      allow create: if isValidFeedback(request.resource.data);
+      allow update, delete: if request.auth != null;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

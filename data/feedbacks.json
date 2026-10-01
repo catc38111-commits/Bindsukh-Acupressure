@@ -1,0 +1,42 @@
+[
+  {
+    "id": "fb-101",
+    "patientName": "Ramesh Kumar Maurya",
+    "rating": 5,
+    "comment": "मुझे पिछले 6 महीने से साइटिका और कमर में असहनीय दर्द था। डॉ. सौरभ प्रजापति जी के 5 सेशन एक्यूप्रेशर और काइरोप्रैक्टिक के बाद 90% आराम मिल गया। बहुत ही अनुभवी और विनम्र थेरेपिस्ट हैं।",
+    "category": "Sciatica & Back Pain",
+    "therapy": "Acupressure & Chiropractic",
+    "createdAt": "2026-09-20T10:30:00.000Z",
+    "verifiedPatient": true
+  },
+  {
+    "id": "fb-102",
+    "patientName": "Sunita Devi",
+    "rating": 5,
+    "comment": "घुटने के दर्द से चलना फिरना बंद हो गया था। बिन्दसुख सेंटर पर मैग्नेट थेरेपी और एक्यूपंक्चर से बिना दवा के बहुत चमत्कारी सुधार हुआ। पूरा परिवार अब यहीं इलाज कराता है।",
+    "category": "Knee Pain & Arthritis",
+    "therapy": "Acupuncture Therapy",
+    "createdAt": "2026-09-21T14:15:00.000Z",
+    "verifiedPatient": true
+  },
+  {
+    "id": "fb-103",
+    "patientName": "Alok Mishra",
+    "rating": 5,
+    "comment": "सर्वाइकल की वजह से चक्कर और गर्दन में तेज खिंचाव रहता था। कपिंग और स्पाइनल एडजस्टमेंट के पहले ही दिन से गर्दन की जकड़न गायब हो गई। पूरा क्लिनिक बहुत साफ-सुथरा और शांत है।",
+    "category": "Cervical Spondylosis",
+    "therapy": "Cupping & Chiropractic",
+    "createdAt": "2026-09-22T11:45:00.000Z",
+    "verifiedPatient": true
+  },
+  {
+    "id": "fb-104",
+    "patientName": "Mohd. Zubair",
+    "rating": 5,
+    "comment": "लकवा (Paralysis) के बाद हाथ में ताकत नहीं थी। डॉ. सौरभ जी ने बहुत लगन और धैर्य से एक्यूप्रेशर प्वाइंट्स पर काम किया। अब हाथ उठने लगा है। ईश्वर इन्हें लंबी उम्र दे।",
+    "category": "Paralysis Rehabilitation",
+    "therapy": "Acupressure Therapy",
+    "createdAt": "2026-09-23T16:20:00.000Z",
+    "verifiedPatient": true
+  }
+]

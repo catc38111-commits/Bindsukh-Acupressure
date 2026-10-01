@@ -1,0 +1,55 @@
+{
+  "entities": {
+    "appointment": {
+      "title": "Patient Appointment",
+      "description": "Clinical appointment booking record for Bindsukh Acupressure & Acupuncture Center",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique appointment ID" },
+        "tokenNumber": { "type": "string", "description": "Daily queue token number (e.g. T-01)" },
+        "patientName": { "type": "string", "description": "Full name of the patient" },
+        "patientPhone": { "type": "string", "description": "10-digit Indian mobile number" },
+        "appointmentDate": { "type": "string", "description": "Appointment date in YYYY-MM-DD format" },
+        "timeSlot": { "type": "string", "description": "Booked 1-hour time slot" },
+        "therapy": { "type": "string", "description": "Primary therapy selected" },
+        "condition": { "type": "string", "description": "Disease condition or health issue treated" },
+        "visitType": { "type": "string", "enum": ["first_visit", "returning_patient"], "description": "First visit or follow-up visit" },
+        "fee": { "type": "number", "description": "Consultation and therapy fee in INR" },
+        "paymentMethod": { "type": "string", "enum": ["pay_at_clinic", "upi_qr"], "description": "Payment mode chosen" },
+        "paymentStatus": { "type": "string", "enum": ["pending", "paid_online", "collected_at_clinic"], "description": "Current payment status" },
+        "upiReferenceNumber": { "type": "string", "description": "Optional 12-digit UPI transaction reference" },
+        "notes": { "type": "string", "description": "Additional symptoms or patient notes" },
+        "status": { "type": "string", "enum": ["scheduled", "in-progress", "completed", "cancelled"], "description": "Appointment status" },
+        "createdAt": { "type": "string", "description": "Creation timestamp in ISO string" },
+        "reminderChannel": { "type": "string", "enum": ["whatsapp", "sms", "both"], "description": "Reminder channel" },
+        "attendanceStatus": { "type": "string", "enum": ["unconfirmed", "confirmed", "rescheduled", "cancelled"], "description": "Attendance status" }
+      },
+      "required": ["id", "tokenNumber", "patientName", "patientPhone", "appointmentDate", "timeSlot", "therapy", "fee", "paymentStatus", "status", "createdAt"]
+    },
+    "feedback": {
+      "title": "Patient Feedback",
+      "description": "Patient review and feedback rating for treatments received",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Feedback identifier" },
+        "patientName": { "type": "string", "description": "Reviewer patient name" },
+        "rating": { "type": "number", "description": "Star rating 1 to 5" },
+        "comment": { "type": "string", "description": "Patient review comment" },
+        "therapy": { "type": "string", "description": "Therapy reviewed" },
+        "createdAt": { "type": "string", "description": "ISO creation date" },
+        "verifiedPatient": { "type": "boolean", "description": "Verified clinic patient badge" }
+      },
+      "required": ["id", "patientName", "rating", "comment", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/appointments/{appointmentId}": {
+      "schema": "appointment",
+      "description": "Collection of patient appointment bookings"
+    },
+    "/feedbacks/{feedbackId}": {
+      "schema": "feedback",
+      "description": "Collection of patient ratings and testimonials"
+    }
+  }
+}

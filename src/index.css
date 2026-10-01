@@ -1,0 +1,162 @@
+@import "tailwindcss";
+
+@layer base {
+  html, body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    background-color: #f4f8f6;
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100%;
+    -webkit-touch-callout: none;
+  }
+
+  h1, h2, h3, .font-serif {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+
+  /* Prevent double-tap zooming on buttons, links, form elements, and interactive cards */
+  button, a, input, select, textarea, [role="button"], .liquid-glass-card, .liquid-glass-dark-card, .liquid-glass-pill, .liquid-glass-dark-pill {
+    touch-action: manipulation;
+  }
+
+  /* Preserve smooth text selection and interaction inside user input fields */
+  input, textarea, [contenteditable="true"] {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+}
+
+/* Liquid Glass Theming Utilities */
+.liquid-glass {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.80);
+  box-shadow: 0 12px 36px 0 rgba(6, 78, 59, 0.06), inset 0 1px 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.liquid-glass-card {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.90);
+  box-shadow: 0 16px 40px -8px rgba(6, 78, 59, 0.08), 0 2px 6px 0 rgba(6, 78, 59, 0.03), inset 0 1px 0 0 rgba(255, 255, 255, 1);
+}
+
+.liquid-glass-dark {
+  background: rgba(4, 47, 34, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.45), inset 0 1px 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.liquid-glass-dark-card {
+  background: rgba(2, 38, 27, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.40), inset 0 1px 1px 0 rgba(255, 255, 255, 0.20);
+}
+
+.liquid-glass-dark-pill {
+  background: rgba(2, 38, 27, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(52, 211, 153, 0.30);
+  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.30), inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.liquid-glass-pill {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 0 4px 16px 0 rgba(6, 78, 59, 0.05), inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
+}
+
+.liquid-glass-amber {
+  background: rgba(254, 243, 199, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  box-shadow: 0 8px 24px -4px rgba(217, 119, 6, 0.12), inset 0 1px 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* Cross-browser custom scrollbar hiding utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+}
+
+/* Premium Native Android Micro-interactions & Smooth Transitions */
+button, 
+a, 
+.interactive-click {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+button:active, 
+a:active, 
+.interactive-click:active {
+  transform: scale(0.95) !important;
+}
+
+button:hover, 
+a:hover, 
+.interactive-click:hover {
+  transform: scale(1.01) !important;
+}
+
+/* Page / Tab Switching Fade In animation */
+.tab-fade-in {
+  animation: tabFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes tabFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Modals & Floating Cards Entry Animation */
+.modal-slide-up {
+  animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+

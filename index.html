@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Bindsukh</title>
+    <meta name="description" content="Appointment booking, live UPI payment, and clinical management portal for Bindsukh Acupressure & Acupuncture Center (हीलिंग थ्रू टच एंड मैग्नेट), Prayagraj." />
+    <meta property="og:title" content="Bindsukh" />
+    <meta property="og:description" content="Appointment booking, live UPI payment, and clinical management portal for Bindsukh Acupressure & Acupuncture Center (हीलिंग थ्रू टच एंड मैग्नेट), Prayagraj." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://i.postimg.cc/RF5zbscT/IMG-20260922-144104-(1).jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://i.postimg.cc/RF5zbscT/IMG-20260922-144104-(1).jpg" />
+    <meta name="theme-color" content="#064e3b" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="BindsukhAcu" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <link rel="icon" type="image/jpeg" href="https://i.postimg.cc/RF5zbscT/IMG-20260922-144104-(1).jpg" />
+    <link rel="apple-touch-icon" href="https://i.postimg.cc/RF5zbscT/IMG-20260922-144104-(1).jpg" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+    <script>
+      // Global capture of beforeinstallprompt early so it is never missed by UI
+      window.deferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        window.deferredPrompt = e;
+      });
+
+      // Register PWA Service Worker on window load
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js').then(function(reg) {
+            console.log('Bindsukh PWA Service Worker active:', reg.scope);
+          }).catch(function(err) {
+            console.warn('PWA Service Worker registration warning:', err);
+          });
+        });
+      }
+
+      // Suppress Vite HMR WebSocket disconnect noise in AI Studio iFrame environment
+      window.addEventListener('unhandledrejection', function(e) {
+        if (e.reason?.message?.includes('WebSocket') || String(e.reason).includes('WebSocket')) {
+          e.preventDefault();
+        }
+      });
+
+      (function() {
+        var origError = console.error;
+        console.error = function() {
+          var first = arguments[0];
+          if (typeof first === 'string' && (first.indexOf('[vite]') !== -1 || first.indexOf('WebSocket') !== -1)) {
+            console.warn.apply(console, arguments);
+            return;
+          }
+          origError.apply(console, arguments);
+        };
+      })();
+    </script>
+  </head>
+  <body class="bg-[#f8faf9] text-slate-800 antialiased selection:bg-emerald-200 selection:text-emerald-900">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
