@@ -10,7 +10,7 @@ export const CLINIC_INFO = {
   email: 'kumarsaurabh1608@gmail.com',
   instagram: '@bindsukhacucenter',
   instagramUrl: 'https://instagram.com/bindsukhacucenter',
-  upiId: '9455110097@upi',
+  upiId: '9455100097@okbizaxis',
   merchantName: 'Bindsukh Acupressure Acupuncture Center',
   maxSlotCapacity: 5,
   fees: {

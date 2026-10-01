@@ -74,13 +74,18 @@ export async function testFirestoreConnection(): Promise<boolean> {
   if (isTestingConnection) return true;
   isTestingConnection = true;
   try {
-    // Attempt reading a test doc to verify connection
-    await getDocFromServer(doc(db, 'test', 'connection'));
+    // Attempt reading a test doc to verify connection with a short 4-second timeout
+    const connectionPromise = getDocFromServer(doc(db, 'test', 'connection'));
+    const timeoutPromise = new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('Connection check timeout')), 4000)
+    );
+    
+    await Promise.race([connectionPromise, timeoutPromise]);
     console.log('[Firestore] Live connection verified successfully.');
     return true;
   } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn('[Firestore] Client is offline or Firestore database is provisioning.');
+    if (error instanceof Error && (error.message.includes('the client is offline') || error.message.includes('timeout') || error.message.includes('Timeout'))) {
+      console.warn('[Firestore] Client is offline, database is provisioning, or connection timed out.');
       return false;
     }
     const msg = error instanceof Error ? error.message : String(error);
@@ -94,8 +99,10 @@ export async function testFirestoreConnection(): Promise<boolean> {
   }
 }
 
-// Auto test on module load
-testFirestoreConnection();
+// Auto test on module load - deferred to prevent blocking the main thread
+setTimeout(() => {
+  testFirestoreConnection().catch(() => {});
+}, 1500);
 
 // Sign in anonymously for seamless security
 export async function ensureAuth(): Promise<User | null> {

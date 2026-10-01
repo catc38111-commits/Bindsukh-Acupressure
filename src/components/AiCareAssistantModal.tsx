@@ -248,7 +248,7 @@ Consult Therapist Saurabh Prajapati (Master in Acupressure & Acupuncture) for 10
 • **Timing:** 8:30 AM to 4:00 PM (Monday - Saturday) | Sunday Morning 8:30 AM - 12:00 PM
 • **Fee:** ₹500 (1st Visit) / ₹200 (Returning)
 • **Address:** Puramufti Purani Bazar, Prayagraj (Near Panchayat Bhawan)
-• **Direct Call/WhatsApp:** +91 9455110097
+• **Direct Call/WhatsApp:** +91 9455100097
 
 👉 **[Book Appointment Now]**`
       : language === 'hinglish'
@@ -257,7 +257,7 @@ Therapist Saurabh Prajapati (Master in Acupressure & Acupuncture) dwara bina daw
 • **Timing:** 8:30 AM to 4:00 PM (Monday - Saturday) | Sunday Morning 8:30 AM - 12:00 PM
 • **Fee:** ₹500 (1st Visit) / ₹200 (Returning)
 • **Address:** Puramufti Purani Bazar, Prayagraj (Near Panchayat Bhawan)
-• **Direct Call/WhatsApp:** +91 9455110097
+• **Direct Call/WhatsApp:** +91 9455100097
 
 👉 **[Book Appointment Now]**`
       : `🏥 **3. क्लिनिक संपर्क व परामर्श गाइड (Clinic Guide):**
@@ -265,7 +265,7 @@ Therapist Saurabh Prajapati (Master in Acupressure & Acupuncture) dwara bina daw
 • **समय:** सुबह 8:30 AM से शाम 4:00 PM (सोम-शनि) | रविवार सुबह 8:30 AM - 12:00 PM
 • **फीस:** ₹500 (पहली बार) / ₹200 (दोबारा)
 • **पता:** पुरामुफ्ती पुरानी बाजार, प्रयागराज (पंचायत भवन के पास)
-• **हेल्पलाइन / WhatsApp:** +91 9455110097
+• **हेल्पलाइन / WhatsApp:** +91 9455100097
 
 👉 **[Book Appointment Now]**`;
 
@@ -481,7 +481,7 @@ ${clinicFooter}`;
       return `क्लिनिक का पता:
 **बिंदसुख एक्यूप्रेशर एवं एक्यूपंक्चर सेंटर**
 पुरामुफ्ती पुरानी बाजार, निकट पुरामुफ्ती पंचायत भवन, प्रयागराज (उ.प्र.) 212208
-📞 हेल्पलाइन / WhatsApp: +91 9455110097 / +91 9455100097
+📞 हेल्पलाइन / WhatsApp: +91 9455100097 / +91 8423221799
 
 ${clinicFooter}`;
     }
@@ -696,19 +696,19 @@ ${clinicFooter}`;
                           <span>{language === 'en' ? 'Book Appointment Now' : language === 'hinglish' ? 'Book Appointment Now' : 'अपॉइंटमेंट अभी बुक करें'}</span>
                         </button>
 
-                        {/* Direct Call +91 9455110097 */}
+                        {/* Direct Call +91 9455100097 */}
                         <a
-                          href="tel:+919455110097"
+                          href="tel:+919455100097"
                           className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5"
-                          title="Call Therapist Saurabh: +91 9455110097"
+                          title="Call Therapist Saurabh: +91 9455100097"
                         >
                           <Phone className="w-3.5 h-3.5 text-emerald-700" />
-                          <span>+91 9455110097</span>
+                          <span>+91 9455100097</span>
                         </a>
 
-                        {/* Direct WhatsApp +91 9455110097 */}
+                        {/* Direct WhatsApp +91 9455100097 */}
                         <a
-                          href={`https://wa.me/919455110097?text=${encodeURIComponent(
+                          href={`https://wa.me/919455100097?text=${encodeURIComponent(
                             'नमस्ते डॉ. सौरभ प्रजापति जी, मुझे बिन्दसुख क्लिनिक में परामर्श व अपॉइंटमेंट चाहिए।'
                           )}`}
                           target="_blank"
