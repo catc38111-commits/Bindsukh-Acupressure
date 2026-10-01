@@ -9,7 +9,7 @@
   "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#15803d",
-  "categories": ["health", "medical", "lifestyle"],
+  "categories": ["health", "lifestyle"],
   "icons": [
     {
       "src": "/icon-192.png",
@@ -22,15 +22,6 @@
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any maskable"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "https://i.postimg.cc/m2mXz0mS/screely-1727788414213.png",
-      "sizes": "1080x1920",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Home Screen"
     }
   ]
 }
