@@ -1,21 +1,36 @@
 {
+  "id": "/",
   "name": "Bindsukh Acupressure Center",
   "short_name": "Bindsukh",
-  "description": "Official appointment booking and holistic health care app for Bindsukh Acupressure Center, Prayagraj.",
+  "description": "Official appointment booking & holistic health care app for Bindsukh Acupressure Center, Prayagraj.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#15803d",
+  "categories": ["health", "medical", "lifestyle"],
   "icons": [
     {
       "src": "/icon-192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
       "src": "/icon-512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://i.postimg.cc/m2mXz0mS/screely-1727788414213.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Home Screen"
     }
   ]
 }
