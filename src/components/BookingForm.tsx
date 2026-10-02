@@ -53,9 +53,10 @@ const generateFallbackSlots = (): SlotAvailability[] => {
 const isSlotExpired = (slotStr: string, isTodaySelected: boolean): boolean => {
   if (!isTodaySelected) return false;
   
-  // Extract start time of slot, e.g. "08:00 AM" from "08:00 AM - 09:00 AM"
-  const startPart = slotStr.split(' - ')[0].trim(); // "08:00 AM"
-  const timeMatch = startPart.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
+  // Extract END time of slot, e.g. "09:00 AM" from "08:00 AM - 09:00 AM", or "04:00 PM" from "03:00 PM - 04:00 PM"
+  const parts = slotStr.split(' - ');
+  const endPart = (parts[1] || parts[0]).trim();
+  const timeMatch = endPart.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
   if (!timeMatch) return false;
   
   let hours = parseInt(timeMatch[1], 10);
@@ -73,7 +74,8 @@ const isSlotExpired = (slotStr: string, isTodaySelected: boolean): boolean => {
   const currentHours = now.getHours();
   const currentMinutes = now.getMinutes();
   
-  // Compare hours and minutes
+  // Compare current time with slot END time
+  // Slot is disabled/expired ONLY AFTER its END time has passed
   if (currentHours > hours) {
     return true;
   } else if (currentHours === hours) {
@@ -278,8 +280,12 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
       return;
     }
 
-    // ALWAYS open the Mandatory Advance Payment Screen (UpiPaymentModal)
-    setIsUpiModalOpen(true);
+    // If UPI QR selected, open modal for payment verification; if Cash selected, submit directly
+    if (paymentMethod === 'upi_qr') {
+      setIsUpiModalOpen(true);
+    } else {
+      await submitAppointmentToServer();
+    }
   };
 
   const submitAppointmentToServer = async (upiRef?: string) => {
@@ -864,64 +870,75 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
 
           {/* Payment Method Radio Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div
-              className="p-4 rounded-2xl border border-slate-200 bg-slate-50 opacity-75 relative"
-            >
-              <div className="absolute top-2.5 right-2.5 bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                {language === 'hi' ? 'बंद है' : 'DISABLED'}
-              </div>
-              <div className="flex items-start gap-3.5">
-                <input
-                  type="radio"
-                  name="payment_method"
-                  disabled
-                  className="mt-1 text-slate-300 focus:ring-0 cursor-not-allowed"
-                />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Banknote className="w-4 h-4 text-slate-400" />
-                    <span className="text-sm font-bold text-slate-400">
-                      {language === 'hi' ? 'क्लीनिक पर भुगतान (नकद)' : 'Pay at Clinic (Cash)'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1">
-                    {language === 'hi'
-                      ? 'फर्जी/मजाकिया बुकिंग को रोकने के लिए बिना अग्रिम सत्यापन के क्लिनिक पर नकद भुगतान अक्षम है।'
-                      : language === 'hinglish'
-                      ? 'Fake bookings ko rokne ke liye direct pay at clinic disabled kiya gaya hai.'
-                      : 'Paying at clinic without advance verification is disabled to prevent fake/joke bookings.'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
             <label
-              className="p-4 rounded-2xl border cursor-pointer transition-all flex items-start gap-3.5 bg-emerald-50/70 border-emerald-700 ring-2 ring-emerald-600/30"
+              onClick={() => setPaymentMethod('pay_at_clinic')}
+              className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start gap-3.5 ${
+                paymentMethod === 'pay_at_clinic'
+                  ? 'bg-emerald-50/70 border-emerald-700 ring-2 ring-emerald-600/30 shadow-xs'
+                  : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/60'
+              }`}
             >
               <input
                 type="radio"
                 name="payment_method"
-                checked={true}
-                readOnly
+                value="pay_at_clinic"
+                checked={paymentMethod === 'pay_at_clinic'}
+                onChange={() => setPaymentMethod('pay_at_clinic')}
+                className="mt-1 text-emerald-800 focus:ring-emerald-700"
+              />
+              <div>
+                <div className="flex items-center gap-2">
+                  <Banknote className="w-4 h-4 text-emerald-800" />
+                  <span className="text-sm font-bold text-slate-900">
+                    {language === 'hi' ? 'क्लिनिक पर भुगतान (नकद)' : 'Pay at Clinic (Cash)'}
+                  </span>
+                  <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold rounded">
+                    {language === 'hi' ? 'नकद / Cash' : 'Cash'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-1">
+                  {language === 'hi'
+                    ? `अपॉइंटमेंट अभी बुक करें और परामर्श के दिन क्लिनिक रिसेप्शन पर ₹${calculatedFee} नकद (Cash) का भुगतान करें।`
+                    : language === 'hinglish'
+                    ? `Appointment abhi book karein aur consultation ke din clinic reception par ₹${calculatedFee} Cash pay karein.`
+                    : `Book your slot now and pay ₹${calculatedFee} in Cash at the clinic front desk on arrival.`}
+                </p>
+              </div>
+            </label>
+
+            <label
+              onClick={() => setPaymentMethod('upi_qr')}
+              className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start gap-3.5 ${
+                paymentMethod === 'upi_qr'
+                  ? 'bg-emerald-50/70 border-emerald-700 ring-2 ring-emerald-600/30 shadow-xs'
+                  : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/60'
+              }`}
+            >
+              <input
+                type="radio"
+                name="payment_method"
+                value="upi_qr"
+                checked={paymentMethod === 'upi_qr'}
+                onChange={() => setPaymentMethod('upi_qr')}
                 className="mt-1 text-emerald-800 focus:ring-emerald-700"
               />
               <div>
                 <div className="flex items-center gap-2">
                   <QrCode className="w-4 h-4 text-emerald-800" />
                   <span className="text-sm font-bold text-slate-900">
-                    {language === 'hi' ? 'अनिवार्य अग्रिम UPI भुगतान' : 'Mandatory Advance UPI Payment'}
+                    {language === 'hi' ? 'UPI QR / ऑनलाइन भुगतान' : 'Pay Online (UPI QR)'}
                   </span>
-                  <span className="px-1.5 py-0.5 bg-amber-400 text-emerald-950 text-[10px] font-black rounded">
-                    {language === 'hi' ? 'अनिवार्य' : 'Required'}
+                  <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold rounded">
+                    {language === 'hi' ? 'तुरंत पुष्टि' : 'Instant'}
                   </span>
                 </div>
                 <p className="text-xs text-slate-600 mt-1">
                   {language === 'hi' ? (
-                    `अपनी सीट सुरक्षित करने के लिए अगले चरण में आधिकारिक QR (${CLINIC_INFO.upiId}) स्कैन करके ₹${calculatedFee} का भुगतान करें और ट्रांजैक्शन ID / UTR दर्ज करें या स्क्रीनशॉट अपलोड करें।`
+                    `आधिकारिक UPI QR (${CLINIC_INFO.upiId}) स्कैन करके ₹${calculatedFee} का तुरंत भुगतान करें और डिजिटल रसीद प्राप्त करें।`
                   ) : language === 'hinglish' ? (
-                    `Agle step me official QR (${CLINIC_INFO.upiId}) scan karke ₹${calculatedFee} pay karein aur Transaction ID / UTR enter karein ya screenshot upload karein.`
+                    `Official UPI QR (${CLINIC_INFO.upiId}) scan karke ₹${calculatedFee} pay karein aur instant digital receipt paayein.`
                   ) : (
-                    `Scan official QR (${CLINIC_INFO.upiId}) in the next step to pay ₹${calculatedFee} and enter Transaction ID / UTR or Upload Screenshot to lock your slot.`
+                    `Scan official UPI QR (${CLINIC_INFO.upiId}) to pay ₹${calculatedFee} instantly and generate a verified digital receipt.`
                   )}
                 </p>
               </div>
