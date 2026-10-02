@@ -50,6 +50,38 @@ const generateFallbackSlots = (): SlotAvailability[] => {
   }));
 };
 
+const isSlotExpired = (slotStr: string, isTodaySelected: boolean): boolean => {
+  if (!isTodaySelected) return false;
+  
+  // Extract start time of slot, e.g. "08:00 AM" from "08:00 AM - 09:00 AM"
+  const startPart = slotStr.split(' - ')[0].trim(); // "08:00 AM"
+  const timeMatch = startPart.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
+  if (!timeMatch) return false;
+  
+  let hours = parseInt(timeMatch[1], 10);
+  const minutes = parseInt(timeMatch[2], 10);
+  const meridian = timeMatch[3].toUpperCase();
+  
+  if (meridian === 'PM' && hours !== 12) {
+    hours += 12;
+  } else if (meridian === 'AM' && hours === 12) {
+    hours = 0;
+  }
+  
+  // Get current system time
+  const now = new Date();
+  const currentHours = now.getHours();
+  const currentMinutes = now.getMinutes();
+  
+  // Compare hours and minutes
+  if (currentHours > hours) {
+    return true;
+  } else if (currentHours === hours) {
+    return currentMinutes >= minutes;
+  }
+  return false;
+};
+
 export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }) => {
   const { t, language } = useLanguage();
   const todayStr = () => {
@@ -72,7 +104,11 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [date, setDate] = useState(todayStr());
-  const [selectedSlot, setSelectedSlot] = useState('');
+  const [selectedSlot, setSelectedSlot] = useState<string>(() => {
+    const fallback = generateFallbackSlots();
+    const firstValid = fallback.find((s) => !isSlotExpired(s.slot, true));
+    return firstValid ? firstValid.slot : '';
+  });
   const [selectedTherapy, setSelectedTherapy] = useState(SERVICES_OFFERED[0].name);
   const [selectedCondition, setSelectedCondition] = useState(CONDITIONS_TREATED[0].name);
   const [paymentMethod, setPaymentMethod] = useState<'pay_at_clinic' | 'upi_qr'>('upi_qr');
@@ -129,6 +165,8 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
     try {
       setLoadingSlots(true);
       const res = await fetch(`/api/slots?date=${targetDate}`, { cache: 'no-store' });
+      const isToday = targetDate === todayStr();
+      
       if (res.ok) {
         const data = await res.json();
         const fetchedSlots = data.slots || [];
@@ -136,18 +174,24 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
         if (fetchedSlots.length === 0) {
           const fallback = generateFallbackSlots();
           setSlots(fallback);
-          setSelectedSlot(fallback[0].slot);
+          // Find first non-expired fallback slot
+          const firstValid = fallback.find(s => !isSlotExpired(s.slot, isToday));
+          setSelectedSlot(firstValid ? firstValid.slot : '');
         } else {
           setSlots(fetchedSlots);
-          // Auto-select the first available slot by default when date changes
+          // Auto-select the first available upcoming valid slot by default when date changes
           const currentSlotObj = fetchedSlots.find((s: SlotAvailability) => s.slot === selectedSlot);
-          if (!currentSlotObj || currentSlotObj.isFull) {
-            const firstAvailable = fetchedSlots.find((s: SlotAvailability) => !s.isFull);
-            if (firstAvailable) {
-              setSelectedSlot(firstAvailable.slot);
-            } else if (fetchedSlots.length > 0) {
-              setSelectedSlot(fetchedSlots[0].slot);
+          const isCurrentExpired = selectedSlot ? isSlotExpired(selectedSlot, isToday) : true;
+          
+          if (!currentSlotObj || currentSlotObj.isFull || isCurrentExpired) {
+            const firstAvailableUpcoming = fetchedSlots.find((s: SlotAvailability) => {
+              const expired = isSlotExpired(s.slot, isToday);
+              return !s.isFull && !expired;
+            });
+            if (firstAvailableUpcoming) {
+              setSelectedSlot(firstAvailableUpcoming.slot);
             } else {
+              // If no upcoming available slots left for today, default to empty to prompt choosing another date
               setSelectedSlot('');
             }
           }
@@ -155,13 +199,16 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
       } else {
         const fallback = generateFallbackSlots();
         setSlots(fallback);
-        setSelectedSlot(fallback[0].slot);
+        const firstValid = fallback.find(s => !isSlotExpired(s.slot, isToday));
+        setSelectedSlot(firstValid ? firstValid.slot : '');
       }
     } catch (err) {
       console.error('Error fetching slots, falling back to local slots:', err);
       const fallback = generateFallbackSlots();
       setSlots(fallback);
-      setSelectedSlot(fallback[0].slot);
+      const isToday = targetDate === todayStr();
+      const firstValid = fallback.find(s => !isSlotExpired(s.slot, isToday));
+      setSelectedSlot(firstValid ? firstValid.slot : '');
     } finally {
       setLoadingSlots(false);
     }
@@ -220,6 +267,14 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
     const currentSlotObj = slots.find((s) => s.slot === selectedSlot);
     if (currentSlotObj && currentSlotObj.isFull) {
       setFormError('The selected slot has reached maximum capacity (5/5). Please choose another slot.');
+      return;
+    }
+
+    // Check if slot is expired for today
+    const isToday = date === todayStr();
+    if (selectedSlot && isSlotExpired(selectedSlot, isToday)) {
+      alert("This time slot has already passed / expired for Today. Please select an upcoming slot or choose another date! / यह समय स्लॉट समाप्त हो चुका है। कृपया दूसरा समय स्लॉट चुनें।");
+      setFormError('The selected time slot has already passed. Please choose an upcoming slot.');
       return;
     }
 
@@ -544,6 +599,8 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
               {slots.map((slotObj) => {
                 const isSelected = selectedSlot === slotObj.slot;
                 const isFull = slotObj.isFull;
+                const isExpired = isSlotExpired(slotObj.slot, date === todayStr());
+                const isDisabled = isFull || isExpired;
                 const available = slotObj.availableCount;
                 const booked = slotObj.bookedCount;
 
@@ -551,10 +608,16 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
                   <button
                     key={slotObj.slot}
                     type="button"
-                    disabled={isFull}
-                    onClick={() => setSelectedSlot(slotObj.slot)}
+                    disabled={isDisabled}
+                    onClick={() => {
+                      if (!isDisabled) {
+                        setSelectedSlot(slotObj.slot);
+                      }
+                    }}
                     className={`relative p-3.5 rounded-2xl text-left border transition-all ${
-                      isFull
+                      isExpired
+                        ? 'bg-slate-100 border-slate-200 opacity-50 cursor-not-allowed select-none'
+                        : isFull
                         ? 'bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed'
                         : isSelected
                         ? 'bg-emerald-900 text-white border-emerald-950 shadow-md ring-2 ring-amber-400'
@@ -562,10 +625,18 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className={`text-xs font-bold font-mono ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+                      <span
+                        className={`text-xs font-bold font-mono ${
+                          isExpired
+                            ? 'text-slate-400 line-through decoration-slate-400/60'
+                            : isSelected
+                            ? 'text-white'
+                            : 'text-slate-900'
+                        }`}
+                      >
                         {slotObj.slot}
                       </span>
-                      {isSelected && (
+                      {isSelected && !isExpired && (
                         <div className="w-4 h-4 rounded-full bg-amber-400 text-emerald-950 flex items-center justify-center text-[10px] font-black">
                           <Check className="w-3 h-3 stroke-[3]" />
                         </div>
@@ -575,13 +646,41 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
                     {/* Capacity Indicator Pill */}
                     <div className="flex items-center justify-between pt-1">
                       <div className="flex items-center gap-1.5 text-[11px]">
-                        <Users className={`w-3.5 h-3.5 ${isSelected ? 'text-amber-300' : 'text-slate-500'}`} />
-                        <span className={isSelected ? 'text-emerald-100' : 'text-slate-600'}>
-                          {booked}/5 {language === 'hi' ? 'बुक' : 'Booked'}
+                        <Users
+                          className={`w-3.5 h-3.5 ${
+                            isExpired
+                              ? 'text-slate-400'
+                              : isSelected
+                              ? 'text-amber-300'
+                              : 'text-slate-500'
+                          }`}
+                        />
+                        <span
+                          className={
+                            isExpired
+                              ? 'text-slate-400'
+                              : isSelected
+                              ? 'text-emerald-100'
+                              : 'text-slate-600'
+                          }
+                        >
+                          {isExpired
+                            ? language === 'hi'
+                              ? 'समाप्त'
+                              : 'Passed'
+                            : `${booked}/5 ${language === 'hi' ? 'बुक' : 'Booked'}`}
                         </span>
                       </div>
 
-                      {isFull ? (
+                      {isExpired ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-500 border border-slate-300">
+                          {language === 'hi'
+                            ? 'समय समाप्त'
+                            : language === 'hinglish'
+                            ? 'Time Passed'
+                            : 'Expired'}
+                        </span>
+                      ) : isFull ? (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
                           {language === 'hi' ? 'स्लॉट फुल' : 'SLOT FULL'}
                         </span>
@@ -604,7 +703,9 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
                     <div className="w-full bg-slate-200/60 rounded-full h-1 mt-2.5 overflow-hidden">
                       <div
                         className={`h-full transition-all duration-300 ${
-                          isFull
+                          isExpired
+                            ? 'bg-slate-300'
+                            : isFull
                             ? 'bg-rose-500'
                             : isSelected
                             ? 'bg-amber-400'
