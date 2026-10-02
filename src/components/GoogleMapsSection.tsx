@@ -194,7 +194,7 @@ export const GoogleMapsSection: React.FC<GoogleMapsSectionProps> = ({ onBookClic
               <div className="space-y-1 text-slate-700 text-[11px]">
                 <div className="flex justify-between">
                   <span>सोमवार से शनिवार:</span>
-                  <span className="font-bold text-slate-900">8:30 AM से 4:00 PM</span>
+                  <span className="font-bold text-slate-900">8:00 AM से 4:00 PM</span>
                 </div>
                 <div className="flex justify-between">
                   <span>रविवार (Sunday Morning):</span>

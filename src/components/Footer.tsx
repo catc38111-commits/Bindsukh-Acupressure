@@ -59,7 +59,7 @@ export const Footer: React.FC<FooterProps> = ({
     : "Operating Hours aur Slots";
 
   const monSatLabel = language === 'en' ? "Monday - Saturday:" : language === 'hi' ? "सोमवार - शनिवार:" : "Monday - Saturday:";
-  const monSatVal = language === 'en' ? "8:30 AM to 4:00 PM (1-Hour Discrete Slots)" : language === 'hi' ? "सुबह 8:30 से दोपहर 4:00 बजे तक (1-घंटे का स्लॉट)" : "8:30 AM se 4:00 PM (1-Hour Discrete Slots)";
+  const monSatVal = language === 'en' ? "8:00 AM to 4:00 PM (1-Hour Discrete Slots)" : language === 'hi' ? "सुबह 8:00 से दोपहर 4:00 बजे तक (1-घंटे का स्लॉट)" : "8:00 AM se 4:00 PM (1-Hour Discrete Slots)";
 
   const sunLabel = language === 'en' ? "Sunday Morning Session:" : language === 'hi' ? "रविवार सुबह सत्र:" : "Sunday Morning Session:";
   const sunVal = language === 'en' ? "8:00 AM to 12:00 PM (1-Hour Discrete Slots)" : language === 'hi' ? "सुबह 8:00 से दोपहर 12:00 बजे तक" : "8:00 AM se 12:00 PM";

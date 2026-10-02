@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { PatientAppointment } from '../types';
-import { CLINIC_INFO, getSlotsForDate } from '../data/clinicData';
+import { CLINIC_INFO, getSlotsForDate, normalizeTimeSlot } from '../data/clinicData';
 import {
   Calendar,
   Check,
@@ -607,8 +607,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
 
   const groupedSlots = useMemo(() => {
     return slotsForDay.map((slot) => {
-      const patientsInSlot = filteredAppointments.filter((apt) => apt.timeSlot === slot);
-      const allActiveInSlot = appointments.filter((apt) => apt.timeSlot === slot && apt.status !== 'cancelled');
+      const patientsInSlot = filteredAppointments.filter((apt) => normalizeTimeSlot(apt.timeSlot) === slot);
+      const allActiveInSlot = appointments.filter((apt) => apt.status !== 'cancelled' && normalizeTimeSlot(apt.timeSlot) === slot);
       const capacityUsed = allActiveInSlot.length;
 
       return {

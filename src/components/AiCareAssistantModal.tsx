@@ -245,7 +245,7 @@ export const AiCareAssistantModal: React.FC<AiCareAssistantModalProps> = ({
     const clinicFooter = language === 'en'
       ? `🏥 **3. Clinic Contact & Appointment Guide:**
 Consult Therapist Saurabh Prajapati (Master in Acupressure & Acupuncture) for 100% drugless permanent relief.
-• **Timing:** 8:30 AM to 4:00 PM (Monday - Saturday) | Sunday Morning 8:30 AM - 12:00 PM
+• **Timing:** 8:00 AM to 4:00 PM (Monday - Saturday) | Sunday Morning 8:00 AM - 12:00 PM
 • **Fee:** ₹500 (1st Visit) / ₹200 (Returning)
 • **Address:** Puramufti Purani Bazar, Prayagraj (Near Panchayat Bhawan)
 • **Direct Call/WhatsApp:** +91 9455100097
@@ -254,7 +254,7 @@ Consult Therapist Saurabh Prajapati (Master in Acupressure & Acupuncture) for 10
       : language === 'hinglish'
       ? `🏥 **3. Clinic Contact & Appointment Guide:**
 Therapist Saurabh Prajapati (Master in Acupressure & Acupuncture) dwara bina dawa ke permanent treatment kiya jata hai.
-• **Timing:** 8:30 AM to 4:00 PM (Monday - Saturday) | Sunday Morning 8:30 AM - 12:00 PM
+• **Timing:** 8:00 AM to 4:00 PM (Monday - Saturday) | Sunday Morning 8:00 AM - 12:00 PM
 • **Fee:** ₹500 (1st Visit) / ₹200 (Returning)
 • **Address:** Puramufti Purani Bazar, Prayagraj (Near Panchayat Bhawan)
 • **Direct Call/WhatsApp:** +91 9455100097
@@ -262,7 +262,7 @@ Therapist Saurabh Prajapati (Master in Acupressure & Acupuncture) dwara bina daw
 👉 **[Book Appointment Now]**`
       : `🏥 **3. क्लिनिक संपर्क व परामर्श गाइड (Clinic Guide):**
 थेरेपिस्ट सौरभ प्रजापति जी (Master in Acupressure & Acupuncture) द्वारा 100% ड्रगलेस स्थायी उपचार किया जाता है।
-• **समय:** सुबह 8:30 AM से शाम 4:00 PM (सोम-शनि) | रविवार सुबह 8:30 AM - 12:00 PM
+• **समय:** सुबह 8:00 AM से शाम 4:00 PM (सोम-शनि) | रविवार सुबह 8:00 AM - 12:00 PM
 • **फीस:** ₹500 (पहली बार) / ₹200 (दोबारा)
 • **पता:** पुरामुफ्ती पुरानी बाजार, प्रयागराज (पंचायत भवन के पास)
 • **हेल्पलाइन / WhatsApp:** +91 9455100097
@@ -470,8 +470,8 @@ ${clinicFooter}`;
 
     if (q.includes('समय') || q.includes('time') || q.includes('timing') || q.includes('hours') || q.includes('दिन')) {
       return `क्लिनिक का समय (Clinic Timings):
-• **सोमवार से शनिवार:** सुबह 8:30 AM से शाम 4:00 PM तक
-• **रविवार (Sunday Morning):** सुबह 8:30 AM से दोपहर 12:00 PM तक
+• **सोमवार से शनिवार:** सुबह 8:00 AM से शाम 4:00 PM तक
+• **रविवार (Sunday Morning):** सुबह 8:00 AM से दोपहर 12:00 PM तक
 नोट: हर 1 घंटे के स्लॉट में भीड़ से बचने के लिए अधिकतम 5 मरीजों को ही समय दिया जाता है।
 
 ${clinicFooter}`;

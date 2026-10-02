@@ -205,7 +205,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBookNowClick, onViewPh
               <div className="pl-6 space-y-1 text-slate-700 font-medium">
                 <div className="flex justify-between">
                   <span>{t('monSat')}</span>
-                  <span className="font-bold text-slate-900">8:30 AM to 4:00 PM</span>
+                  <span className="font-bold text-slate-900">8:00 AM to 4:00 PM</span>
                 </div>
                 <div className="flex justify-between">
                   <span>{t('sunMorning')}</span>
