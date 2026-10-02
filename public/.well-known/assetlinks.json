@@ -1,14 +1,11 @@
 [
   {
-    "relation": [
-      "delegate_permission/common.handle_all_urls"
-    ],
+    "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.bindsukh.acupressure",
-      "sha256_cert_fingerprints": [
-        "14:6D:E9:83:C5:30:06:01:45:14:04:14:63:F1:C3:9C:23:44:B6:BA:56:88:D1:43:53:7A:B4:73:96:A8:1F:B4"
-      ]
+      "package_name": "app.vercel.bindsukh_acupressure.twa",
+      "sha256_cert_fingerprints":
+      ["05:C7:45:15:F1:E3:D2:19:E0:5E:6F:2A:99:5F:E0:A5:AB:0C:00:DA:AE:7F:A0:59:58:0A:F8:2F:F1:B7:4B:9E"]
     }
   }
 ]

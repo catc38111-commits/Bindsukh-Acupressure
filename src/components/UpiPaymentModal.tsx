@@ -85,10 +85,10 @@ export const UpiPaymentModal: React.FC<UpiPaymentModalProps> = ({
   };
 
   return (
-    <div id="upi-modal-overlay" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-      <div id="upi-modal-container" className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-emerald-900/10 overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
+    <div id="upi-modal-overlay" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto">
+      <div id="upi-modal-container" className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-emerald-900/10 overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] my-auto animate-in fade-in zoom-in-95 duration-200">
         {/* Modal Header */}
-        <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-800 text-white p-5 flex items-start justify-between">
+        <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-800 text-white p-5 flex items-start justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-amber-400/20 rounded-xl text-amber-300 border border-amber-400/30">
               <QrCode className="w-6 h-6" />
@@ -108,8 +108,8 @@ export const UpiPaymentModal: React.FC<UpiPaymentModalProps> = ({
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="p-6 space-y-5">
+        {/* Modal Body (Internal scrollable container to prevent overflow issues on WebViews and WebKit) */}
+        <div className="p-4 sm:p-6 space-y-5 overflow-y-auto flex-1 no-scrollbar">
           {/* Summary Pill */}
           <div className="bg-emerald-50 border border-emerald-200/80 rounded-xl p-3.5 flex items-center justify-between">
             <div>
@@ -171,14 +171,52 @@ export const UpiPaymentModal: React.FC<UpiPaymentModalProps> = ({
             </button>
           </div>
 
-          {/* Direct Pay link for mobile */}
-          <a
-            href={upiUrl}
-            className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-sm font-semibold transition-colors shadow-sm md:hidden"
-          >
-            <ExternalLink className="w-4 h-4" />
-            Open Directly in UPI App (Mobile Only)
-          </a>
+          {/* Quick Pay Buttons for Mobile & WebView APK */}
+          <div className="space-y-2">
+            <span className="block text-[11px] uppercase tracking-wider text-slate-500 font-bold">
+              ⚡ Quick Pay via UPI Apps (मोबाईल से सीधे भुगतान करें)
+            </span>
+            <div className="grid grid-cols-2 gap-2">
+              {/* PhonePe */}
+              <a
+                href={`phonepe://pay?pa=${CLINIC_INFO.upiId}&pn=${encodeURIComponent(CLINIC_INFO.merchantName)}&am=${fee}&cu=INR&tn=${encodeURIComponent(`Acupressure Center - ${patientName}`)}`}
+                className="flex items-center justify-center gap-1.5 py-2 px-2.5 bg-violet-700 hover:bg-violet-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-[0.98] border border-violet-800 text-center"
+              >
+                <span className="w-4 h-4 bg-white text-violet-700 rounded-full flex items-center justify-center font-extrabold text-[10px] shrink-0">P</span>
+                PhonePe
+              </a>
+
+              {/* Google Pay */}
+              <a
+                href={`gpay://upi/pay?pa=${CLINIC_INFO.upiId}&pn=${encodeURIComponent(CLINIC_INFO.merchantName)}&am=${fee}&cu=INR&tn=${encodeURIComponent(`Acupressure Center - ${patientName}`)}`}
+                className="flex items-center justify-center gap-1.5 py-2 px-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-[0.98] border border-blue-700 text-center"
+              >
+                <span className="w-4 h-4 bg-white text-blue-600 rounded-full flex items-center justify-center font-extrabold text-[10px] shrink-0">G</span>
+                Google Pay
+              </a>
+
+              {/* Paytm */}
+              <a
+                href={`paytmmp://pay?pa=${CLINIC_INFO.upiId}&pn=${encodeURIComponent(CLINIC_INFO.merchantName)}&am=${fee}&cu=INR&tn=${encodeURIComponent(`Acupressure Center - ${patientName}`)}`}
+                className="flex items-center justify-center gap-1.5 py-2 px-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-[0.98] border border-sky-600 text-center"
+              >
+                <span className="w-4 h-4 bg-white text-sky-500 rounded-full flex items-center justify-center font-extrabold text-[10px] shrink-0">P</span>
+                Paytm
+              </a>
+
+              {/* Generic any app */}
+              <a
+                href={upiUrl}
+                className="flex items-center justify-center gap-1.5 py-2 px-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-[0.98] border border-emerald-950 text-center"
+              >
+                <QrCode className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                Other UPI App
+              </a>
+            </div>
+            <p className="text-[10px] text-slate-500 text-center leading-relaxed">
+              💡 Tip: Tap any button above to open payment apps instantly. If your WebView/APK blocks app-launch, copy the UPI ID or scan the QR Code.
+            </p>
+          </div>
 
           {/* Reference UTR input and file upload screenshot */}
           <div className="space-y-4">
