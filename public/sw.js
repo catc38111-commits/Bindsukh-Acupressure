@@ -1,7 +1,7 @@
 // Bindsukh Acupressure & Acupuncture Center - Progressive Web App Service Worker
 // Fully compliant with PWABuilder Service Worker & Offline Capability specifications
 
-const CACHE_NAME = 'bindsukh-pwa-v2';
+const CACHE_NAME = 'bindsukh-pwa-v3';
 const OFFLINE_URL = '/index.html';
 
 const PRECACHE_ASSETS = [
@@ -27,16 +27,14 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// 2. Activate Event: Clean up legacy caches and immediately claim clients
+// 2. Activate Event: FORCE CLEAR ALL existing caches to load fresh assets upon new deployment
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((name) => {
-          if (name !== CACHE_NAME) {
-            console.log('[PWA ServiceWorker] Purging legacy cache:', name);
-            return caches.delete(name);
-          }
+          console.log('[PWA ServiceWorker] Force purging old cache for fresh deployment:', name);
+          return caches.delete(name);
         })
       );
     }).then(() => self.clients.claim())

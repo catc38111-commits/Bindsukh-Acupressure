@@ -234,28 +234,22 @@ let appointmentsStore: PatientAppointment[] = loadAppointments();
 const MAX_SLOT_CAPACITY = 5;
 
 const WEEKDAY_SLOTS = [
-  '08:30 AM - 09:30 AM',
-  '09:30 AM - 10:30 AM',
-  '10:30 AM - 11:30 AM',
-  '11:30 AM - 12:30 PM',
-  '12:30 PM - 01:30 PM',
-  '01:30 PM - 02:30 PM',
-  '02:30 PM - 03:30 PM',
-  '03:00 PM - 04:00 PM',
-];
-
-const SUNDAY_SLOTS = [
-  '08:00 AM - 09:00 AM',
   '09:00 AM - 10:00 AM',
   '10:00 AM - 11:00 AM',
   '11:00 AM - 12:00 PM',
+  '12:00 PM - 01:00 PM',
+  '01:00 PM - 02:00 PM',
+  '02:00 PM - 03:00 PM',
+  '03:00 PM - 04:00 PM',
+  '04:00 PM - 05:00 PM',
+  '05:00 PM - 06:00 PM',
+  '06:00 PM - 07:00 PM',
 ];
 
+const SUNDAY_SLOTS = [...WEEKDAY_SLOTS];
+
 function getSlotsForDateServer(dateStr: string): string[] {
-  if (!dateStr) return WEEKDAY_SLOTS;
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-  return date.getDay() === 0 ? SUNDAY_SLOTS : WEEKDAY_SLOTS;
+  return WEEKDAY_SLOTS;
 }
 
 async function startServer() {
@@ -267,6 +261,9 @@ async function startServer() {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.header('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.header('Pragma', 'no-cache');
+    res.header('Expires', '0');
     if (req.method === 'OPTIONS') {
       return res.sendStatus(200);
     }

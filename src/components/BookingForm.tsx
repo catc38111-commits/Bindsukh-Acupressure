@@ -28,6 +28,30 @@ interface BookingFormProps {
   onAppointmentCreated: (appointment: PatientAppointment) => void;
 }
 
+const DEFAULT_1HOUR_SLOTS = [
+  '09:00 AM - 10:00 AM',
+  '10:00 AM - 11:00 AM',
+  '11:00 AM - 12:00 PM',
+  '12:00 PM - 01:00 PM',
+  '01:00 PM - 02:00 PM',
+  '02:00 PM - 03:00 PM',
+  '03:00 PM - 04:00 PM',
+  '04:00 PM - 05:00 PM',
+  '05:00 PM - 06:00 PM',
+  '06:00 PM - 07:00 PM',
+];
+
+const generateFallbackSlots = (): SlotAvailability[] => {
+  return DEFAULT_1HOUR_SLOTS.map((s) => ({
+    slot: s,
+    maxCapacity: 5,
+    bookedCount: 0,
+    availableCount: 5,
+    isFull: false,
+    patientsInSlot: []
+  }));
+};
+
 export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }) => {
   const { t, language } = useLanguage();
   const todayStr = () => {
@@ -58,7 +82,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
   const [notes, setNotes] = useState('');
 
   // Slot Availability state from backend
-  const [slots, setSlots] = useState<SlotAvailability[]>([]);
+  const [slots, setSlots] = useState<SlotAvailability[]>(() => generateFallbackSlots());
   const [loadingSlots, setLoadingSlots] = useState(false);
 
   // Dynamic fee calculation based on phone lookup
@@ -106,18 +130,40 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
   const fetchSlots = async (targetDate: string) => {
     try {
       setLoadingSlots(true);
-      const res = await fetch(`/api/slots?date=${targetDate}`);
+      const res = await fetch(`/api/slots?date=${targetDate}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
-        setSlots(data.slots || []);
-        // If current slot is now full or not present, deselect it
-        const currentSlotObj = data.slots.find((s: SlotAvailability) => s.slot === selectedSlot);
-        if (currentSlotObj && currentSlotObj.isFull) {
-          setSelectedSlot('');
+        const fetchedSlots = data.slots || [];
+        
+        if (fetchedSlots.length === 0) {
+          const fallback = generateFallbackSlots();
+          setSlots(fallback);
+          setSelectedSlot(fallback[0].slot);
+        } else {
+          setSlots(fetchedSlots);
+          // Auto-select the first available slot by default when date changes
+          const currentSlotObj = fetchedSlots.find((s: SlotAvailability) => s.slot === selectedSlot);
+          if (!currentSlotObj || currentSlotObj.isFull) {
+            const firstAvailable = fetchedSlots.find((s: SlotAvailability) => !s.isFull);
+            if (firstAvailable) {
+              setSelectedSlot(firstAvailable.slot);
+            } else if (fetchedSlots.length > 0) {
+              setSelectedSlot(fetchedSlots[0].slot);
+            } else {
+              setSelectedSlot('');
+            }
+          }
         }
+      } else {
+        const fallback = generateFallbackSlots();
+        setSlots(fallback);
+        setSelectedSlot(fallback[0].slot);
       }
     } catch (err) {
-      console.error('Error fetching slots:', err);
+      console.error('Error fetching slots, falling back to local slots:', err);
+      const fallback = generateFallbackSlots();
+      setSlots(fallback);
+      setSelectedSlot(fallback[0].slot);
     } finally {
       setLoadingSlots(false);
     }
@@ -167,7 +213,8 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
     }
 
     if (!selectedSlot) {
-      setFormError('Please select an available 1-hour time slot.');
+      alert("Please select/pick an available 1-hour time slot first before proceeding to payment! / कृपया भुगतान से पहले एक समय स्लॉट चुनें!");
+      setFormError('Please select/pick an available 1-hour time slot first / कृपया पहले उपलब्ध समय स्लॉट चुनें।');
       return;
     }
 
