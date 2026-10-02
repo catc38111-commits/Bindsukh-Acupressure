@@ -803,7 +803,9 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
               ) : language === 'hinglish' ? (
                 `Aapko aapke slot se 24 hours pehle clinic direction, Token Number aur confirmation button ke sath reminder milega.`
               ) : (
-                `You will automatically receive an appointment reminder <strong>24 hours before your slot</strong> with clinic directions to Puramufti, your Token Number, and a 1-tap confirmation button.`
+                <>
+                  You will automatically receive an appointment reminder <strong className="font-semibold text-emerald-950">24 hours before your slot</strong> with clinic directions to Puramufti, your Token Number, and a 1-tap confirmation button.
+                </>
               )}
             </p>
             <div className="flex flex-wrap items-center gap-4 pt-1 text-xs text-slate-700">

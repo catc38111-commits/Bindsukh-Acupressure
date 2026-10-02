@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.bindsukh.acupressure",
+      "sha256_cert_fingerprints": [
+        "14:6D:E9:83:C5:30:06:01:45:14:04:14:63:F1:C3:9C:23:44:B6:BA:56:88:D1:43:53:7A:B4:73:96:A8:1F:B4"
+      ]
+    }
+  }
+]

@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, doc, getDocFromServer, collection, setDoc, getDocs, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { getFirestore, doc, getDocFromServer, collection, setDoc, getDocs, query, where, orderBy, onSnapshot, disableNetwork } from 'firebase/firestore';
 import { getAuth, signInAnonymously, onAuthStateChanged, User } from 'firebase/auth';
 import firebaseConfigJson from '../../firebase-applet-config.json';
 import { PatientAppointment } from '../types';
@@ -74,26 +74,23 @@ export async function testFirestoreConnection(): Promise<boolean> {
   if (isTestingConnection) return true;
   isTestingConnection = true;
   try {
-    // Attempt reading a test doc to verify connection with a short 4-second timeout
+    // Attempt reading a test doc to verify connection with a short 3-second timeout
     const connectionPromise = getDocFromServer(doc(db, 'test', 'connection'));
     const timeoutPromise = new Promise<never>((_, reject) => 
-      setTimeout(() => reject(new Error('Connection check timeout')), 4000)
+      setTimeout(() => reject(new Error('Connection check timeout')), 3000)
     );
     
     await Promise.race([connectionPromise, timeoutPromise]);
     console.log('[Firestore] Live connection verified successfully.');
     return true;
   } catch (error) {
-    if (error instanceof Error && (error.message.includes('the client is offline') || error.message.includes('timeout') || error.message.includes('Timeout'))) {
-      console.warn('[Firestore] Client is offline, database is provisioning, or connection timed out.');
-      return false;
+    console.warn('[Firestore] Outbound network connection is offline or restricted inside preview iframe. Switching to offline mode gracefully.');
+    try {
+      await disableNetwork(db);
+    } catch (e) {
+      console.warn('[Firestore] Failed to disable network traffic:', e);
     }
-    const msg = error instanceof Error ? error.message : String(error);
-    if (msg.includes('insufficient permissions') || msg.includes('Permission denied')) {
-      handleFirestoreError(error, OperationType.GET, 'test/connection');
-    }
-    // "not-found" is a successful connection
-    return true;
+    return false;
   } finally {
     isTestingConnection = false;
   }
