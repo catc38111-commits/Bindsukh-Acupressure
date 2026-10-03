@@ -929,8 +929,8 @@ ${CLINIC_BOOKING_FOOTER}`;
     }
   });
 
-  // 5. Create new appointment
-  app.post('/api/appointments', (req, res) => {
+  // 5. Create new appointment (Supports both /api/appointments and /api/book-appointment)
+  const handleCreateAppointment = (req: any, res: any) => {
     try {
       const {
         patientName,
@@ -1038,7 +1038,10 @@ ${CLINIC_BOOKING_FOOTER}`;
       console.error('Error creating appointment:', err);
       res.status(500).json({ error: err.message || 'Internal server error' });
     }
-  });
+  };
+
+  app.post('/api/appointments', handleCreateAppointment);
+  app.post('/api/book-appointment', handleCreateAppointment);
 
   // 6. Update appointment status (e.g., Mark as Done / Completed, In-progress, Cancelled)
   app.patch('/api/appointments/:id/status', (req, res) => {

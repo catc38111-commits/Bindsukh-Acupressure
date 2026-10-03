@@ -442,7 +442,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     try {
-      const response = await fetch('/api/appointments', {
+      const response = await fetch('/api/book-appointment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
