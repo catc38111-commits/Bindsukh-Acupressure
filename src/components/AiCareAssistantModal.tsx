@@ -50,11 +50,91 @@ export const AiCareAssistantModal: React.FC<AiCareAssistantModalProps> = ({
   const clinicLogo = useClinicLogo();
   const { t, language } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
+  const isHistoryPushedRef = useRef(false);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [activeLang, setActiveLang] = useState<'hi-IN' | 'en-IN'>(language === 'en' ? 'en-IN' : 'hi-IN');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const {
+    isListening,
+    transcript,
+    error: voiceError,
+    startListening,
+    stopListening
+  } = useVoiceRecognition({
+    onResult: (text) => {
+      setInputText(text);
+    }
+  });
+
+  // Safe handler to open chat and push dummy history state
+  const handleOpenChat = () => {
+    setIsOpen(true);
+    try {
+      window.history.pushState({ chatOpen: true }, '');
+      isHistoryPushedRef.current = true;
+    } catch (e) {
+      console.warn('[Chatbot] History push error:', e);
+    }
+  };
+
+  // Safe handler to close chat from UI buttons and pop dummy history state
+  const handleCloseChat = () => {
+    if (isListening) stopListening();
+    if (speakingMessageId) {
+      window.speechSynthesis?.cancel?.();
+      setSpeakingMessageId(null);
+    }
+    setIsOpen(false);
+    if (isHistoryPushedRef.current) {
+      isHistoryPushedRef.current = false;
+      try {
+        if (window.history.state?.chatOpen) {
+          window.history.back();
+        }
+      } catch (e) {
+        console.warn('[Chatbot] History back error:', e);
+      }
+    }
+  };
+
+  // Intercept Android / System back button & swipe-back gesture to close the chat drawer safely
+  useEffect(() => {
+    const handlePopState = () => {
+      if (isOpen) {
+        if (isListening) stopListening();
+        if (speakingMessageId) {
+          window.speechSynthesis?.cancel?.();
+          setSpeakingMessageId(null);
+        }
+        setIsOpen(false);
+        isHistoryPushedRef.current = false;
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isOpen, isListening, speakingMessageId, stopListening]);
+
+  // Clean up history state on unmount if chat was open
+  useEffect(() => {
+    return () => {
+      if (isHistoryPushedRef.current) {
+        isHistoryPushedRef.current = false;
+        try {
+          if (window.history.state?.chatOpen) {
+            window.history.back();
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    };
+  }, []);
 
   // 1. Load persisted chat history from localStorage on component mount
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
@@ -132,18 +212,6 @@ export const AiCareAssistantModal: React.FC<AiCareAssistantModalProps> = ({
       }
     }
   };
-
-  const {
-    isListening,
-    transcript,
-    error: voiceError,
-    startListening,
-    stopListening
-  } = useVoiceRecognition({
-    onResult: (text) => {
-      setInputText(text);
-    }
-  });
 
   // Keep input text in sync when transcript updates
   useEffect(() => {
@@ -878,7 +946,7 @@ ${clinicFooter}`;
         <button
           id="bindsukh-ai-assistant-btn"
           type="button"
-          onClick={() => setIsOpen(true)}
+          onClick={handleOpenChat}
           className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40 bg-gradient-to-r from-emerald-800 via-emerald-900 to-amber-900 text-white rounded-full p-3 sm:px-5 sm:py-3.5 shadow-2xl shadow-emerald-950/40 border-2 border-amber-400 hover:scale-105 active:scale-95 transition-all flex items-center gap-3 group cursor-pointer"
           title="Bindsukh AI Care Assistant (बिंदसुख स्वास्थ्य सहायक)"
         >
@@ -907,7 +975,14 @@ ${clinicFooter}`;
 
       {/* Chatbot Modal / Drawer */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-6 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-6 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              handleCloseChat();
+            }
+          }}
+        >
           <div className="bg-white w-full sm:max-w-md h-[92vh] sm:h-[650px] rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom-6 duration-300">
             {/* Header */}
             <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-amber-950 text-white p-4 flex items-center justify-between border-b border-amber-400/40 shrink-0">
@@ -962,10 +1037,7 @@ ${clinicFooter}`;
                 {/* Close Button */}
                 <button
                   type="button"
-                  onClick={() => {
-                    if (isListening) stopListening();
-                    setIsOpen(false);
-                  }}
+                  onClick={handleCloseChat}
                   className="p-1.5 rounded-full hover:bg-white/20 text-slate-300 hover:text-white transition-colors"
                   title="Close Assistant"
                 >
@@ -1043,7 +1115,7 @@ ${clinicFooter}`;
                         <button
                           type="button"
                           onClick={() => {
-                            setIsOpen(false);
+                            handleCloseChat();
                             onNavigateToBooking();
                           }}
                           className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 text-emerald-950 font-black text-xs shadow-md hover:from-amber-300 hover:to-amber-400 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 border border-amber-500/30"
@@ -1082,7 +1154,7 @@ ${clinicFooter}`;
                           <button
                             type="button"
                             onClick={() => {
-                              setIsOpen(false);
+                              handleCloseChat();
                               onNavigateToMaps();
                             }}
                             className="px-3 py-1.5 rounded-xl bg-amber-50 text-amber-950 border border-amber-300 font-bold text-xs shadow-2xs hover:bg-amber-100 transition-all flex items-center gap-1.5 cursor-pointer"

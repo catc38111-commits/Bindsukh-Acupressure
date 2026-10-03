@@ -171,8 +171,8 @@ export default function App() {
         onOpenHelpShareModal={() => setShowHelpShareModal(true)}
       />
 
-      {/* Main Content Area with bottom safe padding for YouTube navigation bar */}
-      <main className="relative z-10 flex-1 max-w-7xl w-full max-w-full mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-8 pb-28 overflow-x-hidden">
+      {/* Main Content Area with bottom safe padding for fixed bottom bar */}
+      <main className="relative z-10 flex-1 max-w-7xl w-full max-w-full mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-8 pb-28 sm:pb-32 overflow-x-hidden">
         {/* Navigation Tab Content */}
         {activeTab === 'booking' && (
           <div className="space-y-8 tab-fade-in">
