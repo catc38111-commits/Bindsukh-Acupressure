@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import QRCode from 'qrcode';
 import { CLINIC_INFO, SERVICES_OFFERED, CONDITIONS_TREATED } from '../data/clinicData';
 import { PatientAppointment, SlotAvailability, PatientHistoryCheck } from '../types';
 import { UpiPaymentModal } from './UpiPaymentModal';
 import { saveAppointmentToFirestore } from '../utils/firebase';
 import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
 import { useLanguage } from '../context/LanguageContext';
+import { copyToClipboard } from '../utils/clipboard';
 import {
   Calendar,
   Clock,
@@ -21,7 +23,12 @@ import {
   Info,
   Bell,
   Mic,
-  MicOff
+  MicOff,
+  CreditCard,
+  ArrowRight,
+  Copy,
+  Smartphone,
+  ExternalLink
 } from 'lucide-react';
 
 interface BookingFormProps {
@@ -162,6 +169,19 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
+  // Live Inline UPI QR & Copy Toast state for Android WebViews / APKs
+  const [inlineQrUrl, setInlineQrUrl] = useState<string>('');
+  const [upiCopiedToast, setUpiCopiedToast] = useState(false);
+
+  // Payment / Consultation fee section ref for automatic smooth scrolling
+  const paymentSectionRef = useRef<HTMLDivElement>(null);
+
+  const scrollToPaymentSection = () => {
+    setTimeout(() => {
+      paymentSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
   // Fetch slot availability whenever date changes
   const fetchSlots = async (targetDate: string) => {
     try {
@@ -243,6 +263,33 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
   const calculatedFee = patientHistory?.isReturning
     ? CLINIC_INFO.fees.returningPatient // ₹200
     : CLINIC_INFO.fees.firstVisit; // ₹500
+
+  // Generate real-time static/live UPI QR Code URI for inline fallback view
+  useEffect(() => {
+    const upiUri = `upi://pay?pa=${CLINIC_INFO.upiId}&pn=${encodeURIComponent(
+      CLINIC_INFO.merchantName
+    )}&am=${calculatedFee}&cu=INR&tn=${encodeURIComponent(`Acupressure Center - ${name.trim() || 'Patient'}`)}`;
+
+    QRCode.toDataURL(upiUri, {
+      width: 400,
+      margin: 2,
+      color: {
+        dark: '#064e3b',
+        light: '#ffffff',
+      },
+      errorCorrectionLevel: 'M',
+    })
+      .then((url) => setInlineQrUrl(url))
+      .catch((err) => console.error('Inline UPI QR generation error:', err));
+  }, [calculatedFee, name]);
+
+  const handleCopyUpiId = async () => {
+    const success = await copyToClipboard(CLINIC_INFO.upiId);
+    if (success) {
+      setUpiCopiedToast(true);
+      setTimeout(() => setUpiCopiedToast(false), 2500);
+    }
+  };
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -343,7 +390,16 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
   };
 
   return (
-    <div id="booking-form-wrapper" className="liquid-glass-card rounded-3xl shadow-2xl border border-white/80 overflow-hidden">
+    <div id="booking-form-wrapper" className="liquid-glass-card rounded-3xl shadow-2xl border border-white/80 overflow-hidden relative">
+      {/* Floating Instant Toast Notification for UPI Copy */}
+      {upiCopiedToast && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-60 bg-emerald-950 text-amber-300 font-extrabold px-5 py-2.5 rounded-full shadow-2xl border-2 border-amber-400 flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-200 select-none">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 stroke-[3]" />
+          <span>UPI ID Copied!</span>
+          <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+        </div>
+      )}
+
       {/* Header Accent Bar with Liquid Glass Dark */}
       <div className="liquid-glass-dark text-white p-6 sm:p-8 border-b border-white/20">
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -381,7 +437,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
       </div>
 
       {/* Booking Form Body */}
-      <form onSubmit={handleBookingSubmit} className="p-6 sm:p-8 space-y-8">
+      <form onSubmit={handleBookingSubmit} className="p-6 sm:p-8 space-y-8 pb-28 sm:pb-8">
         {formError && (
           <div className="bg-rose-50/90 border border-rose-200 text-rose-800 p-4 rounded-2xl text-sm flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
@@ -554,7 +610,10 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
             <div className="flex flex-wrap gap-2.5 items-center">
               <button
                 type="button"
-                onClick={() => setDate(todayStr())}
+                onClick={() => {
+                  setDate(todayStr());
+                  scrollToPaymentSection();
+                }}
                 className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
                   date === todayStr()
                     ? 'bg-emerald-900 text-white shadow-md'
@@ -566,7 +625,10 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
               </button>
               <button
                 type="button"
-                onClick={() => setDate(tomorrowStr())}
+                onClick={() => {
+                  setDate(tomorrowStr());
+                  scrollToPaymentSection();
+                }}
                 className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
                   date === tomorrowStr()
                     ? 'bg-emerald-900 text-white shadow-md'
@@ -583,7 +645,10 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
                   type="date"
                   min={todayStr()}
                   value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                  onChange={(e) => {
+                    setDate(e.target.value);
+                    scrollToPaymentSection();
+                  }}
                   className="px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                 />
               </div>
@@ -618,6 +683,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
                     onClick={() => {
                       if (!isDisabled) {
                         setSelectedSlot(slotObj.slot);
+                        scrollToPaymentSection();
                       }
                     }}
                     className={`relative p-3.5 rounded-2xl text-left border transition-all ${
@@ -831,7 +897,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
         </div>
 
         {/* Step 4: Fee & Payment Method */}
-        <div className="space-y-4">
+        <div ref={paymentSectionRef} id="booking-payment-section" className="space-y-4 scroll-mt-24">
           <div className="flex items-center gap-2 text-emerald-950 font-bold text-base border-b border-emerald-100 pb-2">
             <span className="w-6 h-6 rounded-full bg-emerald-900 text-amber-300 text-xs flex items-center justify-center font-bold">4</span>
             <h3>{t('step4Title')}</h3>
@@ -945,6 +1011,126 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
             </label>
           </div>
 
+          {/* Fallback View Inside Payment Section for Android WebViews & Direct Scans */}
+          {paymentMethod === 'upi_qr' && (
+            <div className="mt-3 p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-emerald-50/90 to-white border-2 border-emerald-300/80 shadow-md space-y-4 animate-in fade-in duration-300">
+              <div className="flex items-center justify-between border-b border-emerald-200/70 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-900 text-amber-300 flex items-center justify-center font-bold">
+                    <QrCode className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-bold text-emerald-950 flex items-center gap-1.5">
+                      <span>{language === 'hi' ? 'लाइव UPI QR कोड व सीधा भुगतान' : 'Live UPI QR Code & Direct Payment'}</span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-300">
+                        {language === 'hi' ? 'सुरक्षित' : 'Verified'}
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      Merchant: <span className="font-semibold text-slate-700">{CLINIC_INFO.merchantName}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="text-xs text-slate-500 font-medium block">{language === 'hi' ? 'देय शुल्क' : 'Payable'}</span>
+                  <span className="text-lg font-black text-emerald-900 font-mono">₹{calculatedFee}</span>
+                </div>
+              </div>
+
+              {/* QR Code and Copy UPI ID Section */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                {/* QR Code Display */}
+                <div className="sm:col-span-5 flex flex-col items-center justify-center p-3 bg-white rounded-2xl border border-emerald-200 shadow-inner">
+                  <div className="w-36 h-36 sm:w-40 sm:h-40 bg-white rounded-xl shadow-xs border border-emerald-100 flex items-center justify-center overflow-hidden p-1.5">
+                    {inlineQrUrl ? (
+                      <img
+                        src={inlineQrUrl}
+                        alt="Bindsukh Clinic Official UPI QR Code"
+                        className="w-full h-full object-contain block"
+                      />
+                    ) : (
+                      <span className="text-xs text-slate-400 font-medium animate-pulse">Generating QR...</span>
+                    )}
+                  </div>
+                  <span className="mt-2 text-[10px] font-semibold text-emerald-800 flex items-center gap-1 text-center">
+                    <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                    {language === 'hi' ? 'गूगल पे, फोनपे, पेटीएम से स्कैन करें' : 'Scan with GPay, PhonePe, Paytm, BHIM'}
+                  </span>
+                </div>
+
+                {/* UPI ID & Quick App / Copy Actions */}
+                <div className="sm:col-span-7 space-y-3">
+                  {/* Official Clinic UPI ID box with 1-Click Copy */}
+                  <div className="bg-white rounded-xl p-3 border border-emerald-200 shadow-xs space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">
+                        {language === 'hi' ? 'आधिकारिक क्लिनिक UPI ID' : 'Official Clinic UPI ID'}
+                      </span>
+                      {upiCopiedToast && (
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          UPI ID Copied!
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200">
+                      <code className="text-xs sm:text-sm font-bold text-emerald-950 font-mono select-all truncate">
+                        9455100097@okbizaxis
+                      </code>
+                      <button
+                        type="button"
+                        onClick={handleCopyUpiId}
+                        className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer shadow-xs active:scale-95 shrink-0 ${
+                          upiCopiedToast
+                            ? 'bg-emerald-700 text-white shadow-emerald-700/20'
+                            : 'bg-emerald-800 hover:bg-emerald-900 text-white'
+                        }`}
+                        title="Copy UPI ID: 9455100097@okbizaxis"
+                      >
+                        {upiCopiedToast ? (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5 text-white stroke-[3]" />
+                            <span>Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copy UPI ID</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Android WebView / APK Support Notice */}
+                  <div className="p-2.5 rounded-xl bg-amber-50/90 border border-amber-200 text-[11px] text-amber-950 leading-relaxed flex items-start gap-2">
+                    <Smartphone className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="font-bold">{language === 'hi' ? 'Android WebView / APK सहायता:' : 'Android WebView / APK Fallback:'}</strong>{' '}
+                      {language === 'hi'
+                        ? 'यदि आपका ऐप या ब्राउज़र सीधे UPI ऐप नहीं खोल पा रहा है, तो ऊपर दिए गए QR कोड को स्कैन करें या UPI ID को कॉपी करके किसी भी UPI ऐप में पेस्ट करके भुगतान करें।'
+                        : 'If direct app switching is restricted on your device/APK, please scan the QR code above or copy the UPI ID (9455100097@okbizaxis) into any UPI app.'}
+                    </div>
+                  </div>
+
+                  {/* Direct Launch Buttons */}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsUpiModalOpen(true)}
+                      className="px-3.5 py-1.5 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>{language === 'hi' ? 'पूर्ण स्क्रीन QR व रसीद अपलोड' : 'Open Fullscreen QR & UTR Upload'}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Automated 24-Hour Reminder Preference Card */}
           <div className="mt-4 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1044,6 +1230,59 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
           </button>
         </div>
       </form>
+
+      {/* Mobile Sticky Bottom Navigation Bar with Total Amount & Direct Pay Now Action Button */}
+      <div
+        id="mobile-booking-sticky-bar"
+        className="sm:hidden fixed bottom-[52px] inset-x-0 z-30 bg-gradient-to-r from-emerald-950 via-emerald-900 to-slate-950 text-white border-t border-amber-400/50 shadow-[0_-8px_25px_rgba(0,0,0,0.45)] backdrop-blur-md px-3.5 py-2 flex items-center justify-between gap-3 animate-in slide-in-from-bottom-2 select-none no-print"
+      >
+        {/* Left: Total Fee and Slot Summary (Clickable to scroll to payment section) */}
+        <div
+          onClick={scrollToPaymentSection}
+          className="flex flex-col cursor-pointer active:opacity-75 transition-opacity"
+          title="Click to view Payment / Consultation Fee section"
+        >
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
+              {language === 'hi' ? 'कुल राशि:' : 'Total:'}
+            </span>
+            <span className="text-lg font-black text-amber-300 font-mono tracking-tight leading-none">
+              ₹{calculatedFee}
+            </span>
+            <span className="text-[9px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/40 px-1.5 py-0.5 rounded leading-none">
+              {patientHistory?.isReturning ? (language === 'hi' ? 'पुराना' : 'Returning') : (language === 'hi' ? 'नया मरीज' : '1st Visit')}
+            </span>
+          </div>
+          <div className="text-[10px] text-emerald-200 font-medium truncate max-w-[155px] flex items-center gap-1 mt-0.5">
+            <Clock className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+            <span className="truncate">
+              {selectedSlot ? selectedSlot.split(' - ')[0] : (language === 'hi' ? 'स्लॉट चुनें' : 'Select Slot')}
+              {date ? ` • ${date}` : ''}
+            </span>
+          </div>
+        </div>
+
+        {/* Right: Direct Pay Now Action Button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            handleBookingSubmit(e);
+          }}
+          disabled={isSubmitting}
+          className="px-4 py-2 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 active:scale-95 text-emerald-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/25 transition-all flex items-center gap-1.5 cursor-pointer border border-amber-300 shrink-0 disabled:opacity-50"
+          title="Proceed to confirm and pay"
+        >
+          {isSubmitting ? (
+            <span>{language === 'hi' ? 'प्रोसेसिंग...' : 'Processing...'}</span>
+          ) : (
+            <>
+              <CreditCard className="w-3.5 h-3.5 text-emerald-950 stroke-[2.5]" />
+              <span>{paymentMethod === 'upi_qr' ? (language === 'hi' ? 'Pay Now (UPI)' : 'Pay Now') : (language === 'hi' ? 'अभी Pay करें' : 'Pay Now')}</span>
+              <Sparkles className="w-3.5 h-3.5 text-emerald-950 fill-emerald-950" />
+            </>
+          )}
+        </button>
+      </div>
 
       {/* Live UPI QR Code Modal */}
       <UpiPaymentModal

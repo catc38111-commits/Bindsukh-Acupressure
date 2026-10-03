@@ -105,6 +105,19 @@ export const AiCareAssistantModal: React.FC<AiCareAssistantModalProps> = ({
     }
   }, [messages, isOpen]);
 
+  // Disable background page scrolling when the drawer is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
   // Text to Speech playback
   const handleSpeak = (msgId: string, text: string) => {
     if (!('speechSynthesis' in window)) return;
@@ -664,7 +677,10 @@ ${clinicFooter}`;
             )}
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#f8faf9]">
+            <div
+              className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#f8faf9] overscroll-contain"
+              style={{ overscrollBehavior: 'contain' }}
+            >
               {messages.map((msg) => (
                 <div
                   key={msg.id}

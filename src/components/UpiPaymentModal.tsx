@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { CLINIC_INFO } from '../data/clinicData';
-import { CheckCircle2, Copy, ExternalLink, QrCode, ShieldCheck, X, Upload, Image } from 'lucide-react';
+import { copyToClipboard } from '../utils/clipboard';
+import { CheckCircle2, Copy, ExternalLink, QrCode, ShieldCheck, X, Upload, Image, Sparkles, Smartphone } from 'lucide-react';
 
 interface UpiPaymentModalProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ export const UpiPaymentModal: React.FC<UpiPaymentModalProps> = ({
 }) => {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copied, setCopied] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [referenceNumber, setReferenceNumber] = useState('');
   const [screenshotName, setScreenshotName] = useState('');
   const [screenshotBase64, setScreenshotBase64] = useState('');
@@ -56,10 +58,24 @@ export const UpiPaymentModal: React.FC<UpiPaymentModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleCopyUpi = () => {
-    navigator.clipboard.writeText(CLINIC_INFO.upiId);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopyUpi = async () => {
+    const success = await copyToClipboard(CLINIC_INFO.upiId);
+    if (success) {
+      setCopied(true);
+      setToastMessage('UPI ID Copied!');
+      setTimeout(() => {
+        setCopied(false);
+        setToastMessage(null);
+      }, 2500);
+    }
+  };
+
+  const handleLaunchUpiApp = (url: string) => {
+    try {
+      window.location.href = url;
+    } catch (err) {
+      console.warn('Direct app launch error in WebView:', err);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -86,6 +102,15 @@ export const UpiPaymentModal: React.FC<UpiPaymentModalProps> = ({
 
   return (
     <div id="upi-modal-overlay" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto">
+      {/* Instant Toast Notification Banner */}
+      {toastMessage && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] bg-emerald-950 text-amber-300 font-extrabold px-5 py-2.5 rounded-full shadow-2xl border-2 border-amber-400 flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 stroke-[3]" />
+          <span>{toastMessage}</span>
+          <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+        </div>
+      )}
+
       <div id="upi-modal-container" className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-emerald-900/10 overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] my-auto animate-in fade-in zoom-in-95 duration-200">
         {/* Modal Header */}
         <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-800 text-white p-5 flex items-start justify-between shrink-0">
@@ -101,7 +126,7 @@ export const UpiPaymentModal: React.FC<UpiPaymentModalProps> = ({
           <button
             id="close-upi-modal-btn"
             onClick={onClose}
-            className="text-emerald-200 hover:text-white p-1 rounded-lg hover:bg-emerald-800/50 transition-colors"
+            className="text-emerald-200 hover:text-white p-1 rounded-lg hover:bg-emerald-800/50 transition-colors cursor-pointer"
             title="Close"
           >
             <X className="w-5 h-5" />
@@ -122,7 +147,7 @@ export const UpiPaymentModal: React.FC<UpiPaymentModalProps> = ({
             </div>
           </div>
 
-          {/* QR Code Container */}
+          {/* QR Code Container with High-Res Display */}
           <div className="flex flex-col items-center justify-center p-4 bg-gradient-to-b from-slate-50 to-emerald-50/40 rounded-2xl border border-emerald-100 shadow-inner">
             <div
               className="p-2 sm:p-2.5 bg-white rounded-xl shadow-md border border-emerald-100 w-full max-w-[220px] aspect-square flex items-center justify-center mx-auto overflow-hidden"
@@ -139,33 +164,37 @@ export const UpiPaymentModal: React.FC<UpiPaymentModalProps> = ({
                 <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs font-medium">Loading QR...</div>
               )}
             </div>
-            <p className="mt-3 text-xs text-emerald-800 font-medium flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <p className="mt-3 text-xs text-emerald-800 font-medium flex items-center gap-1.5 text-center">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
               Scan with Google Pay, PhonePe, Paytm, BHIM, or any UPI App
             </p>
           </div>
 
-          {/* Merchant UPI ID display & copy */}
-          <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 flex items-center justify-between gap-2">
+          {/* Merchant UPI ID display & copy with Instant Toast */}
+          <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200 flex items-center justify-between gap-2 shadow-xs">
             <div>
               <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Official Clinic UPI ID</div>
-              <div className="text-sm font-bold text-slate-800 font-mono">{CLINIC_INFO.upiId}</div>
+              <div className="text-sm font-bold text-slate-900 font-mono select-all">{CLINIC_INFO.upiId}</div>
             </div>
             <button
               id="copy-upi-btn"
               type="button"
               onClick={handleCopyUpi}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition-colors"
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs active:scale-95 ${
+                copied
+                  ? 'bg-emerald-700 text-white shadow-emerald-700/20'
+                  : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300'
+              }`}
             >
               {copied ? (
                 <>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>Copied!</span>
+                  <CheckCircle2 className="w-4 h-4 text-white stroke-[3]" />
+                  <span>UPI ID Copied!</span>
                 </>
               ) : (
                 <>
                   <Copy className="w-3.5 h-3.5" />
-                  <span>Copy UPI</span>
+                  <span>Copy UPI ID</span>
                 </>
               )}
             </button>
@@ -173,48 +202,53 @@ export const UpiPaymentModal: React.FC<UpiPaymentModalProps> = ({
 
           {/* Quick Pay Buttons for Mobile & WebView APK */}
           <div className="space-y-2">
-            <span className="block text-[11px] uppercase tracking-wider text-slate-500 font-bold">
+            <span className="block text-[11px] uppercase tracking-wider text-slate-500 font-bold flex items-center gap-1">
+              <Smartphone className="w-3.5 h-3.5 text-emerald-700" />
               ⚡ Quick Pay via UPI Apps (मोबाईल से सीधे भुगतान करें)
             </span>
             <div className="grid grid-cols-2 gap-2">
               {/* PhonePe */}
-              <a
-                href={`phonepe://pay?pa=${CLINIC_INFO.upiId}&pn=${encodeURIComponent(CLINIC_INFO.merchantName)}&am=${fee}&cu=INR&tn=${encodeURIComponent(`Acupressure Center - ${patientName}`)}`}
-                className="flex items-center justify-center gap-1.5 py-2 px-2.5 bg-violet-700 hover:bg-violet-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-[0.98] border border-violet-800 text-center"
+              <button
+                type="button"
+                onClick={() => handleLaunchUpiApp(`phonepe://pay?pa=${CLINIC_INFO.upiId}&pn=${encodeURIComponent(CLINIC_INFO.merchantName)}&am=${fee}&cu=INR&tn=${encodeURIComponent(`Acupressure Center - ${patientName}`)}`)}
+                className="flex items-center justify-center gap-1.5 py-2 px-2.5 bg-violet-700 hover:bg-violet-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-[0.98] border border-violet-800 text-center cursor-pointer"
               >
                 <span className="w-4 h-4 bg-white text-violet-700 rounded-full flex items-center justify-center font-extrabold text-[10px] shrink-0">P</span>
                 PhonePe
-              </a>
+              </button>
 
               {/* Google Pay */}
-              <a
-                href={`gpay://upi/pay?pa=${CLINIC_INFO.upiId}&pn=${encodeURIComponent(CLINIC_INFO.merchantName)}&am=${fee}&cu=INR&tn=${encodeURIComponent(`Acupressure Center - ${patientName}`)}`}
-                className="flex items-center justify-center gap-1.5 py-2 px-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-[0.98] border border-blue-700 text-center"
+              <button
+                type="button"
+                onClick={() => handleLaunchUpiApp(`gpay://upi/pay?pa=${CLINIC_INFO.upiId}&pn=${encodeURIComponent(CLINIC_INFO.merchantName)}&am=${fee}&cu=INR&tn=${encodeURIComponent(`Acupressure Center - ${patientName}`)}`)}
+                className="flex items-center justify-center gap-1.5 py-2 px-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-[0.98] border border-blue-700 text-center cursor-pointer"
               >
                 <span className="w-4 h-4 bg-white text-blue-600 rounded-full flex items-center justify-center font-extrabold text-[10px] shrink-0">G</span>
                 Google Pay
-              </a>
+              </button>
 
               {/* Paytm */}
-              <a
-                href={`paytmmp://pay?pa=${CLINIC_INFO.upiId}&pn=${encodeURIComponent(CLINIC_INFO.merchantName)}&am=${fee}&cu=INR&tn=${encodeURIComponent(`Acupressure Center - ${patientName}`)}`}
-                className="flex items-center justify-center gap-1.5 py-2 px-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-[0.98] border border-sky-600 text-center"
+              <button
+                type="button"
+                onClick={() => handleLaunchUpiApp(`paytmmp://pay?pa=${CLINIC_INFO.upiId}&pn=${encodeURIComponent(CLINIC_INFO.merchantName)}&am=${fee}&cu=INR&tn=${encodeURIComponent(`Acupressure Center - ${patientName}`)}`)}
+                className="flex items-center justify-center gap-1.5 py-2 px-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-[0.98] border border-sky-600 text-center cursor-pointer"
               >
                 <span className="w-4 h-4 bg-white text-sky-500 rounded-full flex items-center justify-center font-extrabold text-[10px] shrink-0">P</span>
                 Paytm
-              </a>
+              </button>
 
               {/* Generic any app */}
-              <a
-                href={upiUrl}
-                className="flex items-center justify-center gap-1.5 py-2 px-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-[0.98] border border-emerald-950 text-center"
+              <button
+                type="button"
+                onClick={() => handleLaunchUpiApp(upiUrl)}
+                className="flex items-center justify-center gap-1.5 py-2 px-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-[0.98] border border-emerald-950 text-center cursor-pointer"
               >
                 <QrCode className="w-3.5 h-3.5 text-amber-300 shrink-0" />
                 Other UPI App
-              </a>
+              </button>
             </div>
             <p className="text-[10px] text-slate-500 text-center leading-relaxed">
-              💡 Tip: Tap any button above to open payment apps instantly. If your WebView/APK blocks app-launch, copy the UPI ID or scan the QR Code.
+              📱 Android WebView / APK Support: If direct app switching is restricted by your device wrapper, scan the QR code above or copy the UPI ID <strong className="font-mono text-emerald-900 font-bold">{CLINIC_INFO.upiId}</strong>.
             </p>
           </div>
 
@@ -283,13 +317,13 @@ export const UpiPaymentModal: React.FC<UpiPaymentModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-3">
+        <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
           <button
             id="cancel-upi-payment-btn"
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 transition-colors"
+            className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 transition-colors cursor-pointer"
           >
             Cancel
           </button>
@@ -298,7 +332,7 @@ export const UpiPaymentModal: React.FC<UpiPaymentModalProps> = ({
             type="button"
             onClick={handleConfirm}
             disabled={isSubmitting}
-            className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white font-semibold rounded-xl text-sm transition-all shadow-md flex items-center gap-2 disabled:opacity-50"
+            className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white font-semibold rounded-xl text-sm transition-all shadow-md flex items-center gap-2 disabled:opacity-50 cursor-pointer"
           >
             {isSubmitting ? 'Verifying...' : 'I Have Paid • Confirm Booking'}
           </button>
