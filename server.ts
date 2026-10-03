@@ -295,29 +295,120 @@ async function startServer() {
   // 1a. Gemini AI Care Assistant Chatbot Endpoint
   app.post('/api/chat', async (req, res) => {
     try {
-      const { message, history } = req.body;
-      if (!message || !message.trim()) {
+      const { message, history, language } = req.body;
+      if (!message || typeof message !== 'string' || !message.trim()) {
         return res.status(400).json({ error: 'Message cannot be empty.' });
       }
 
+      const reqLang = (language || 'hi').toLowerCase().trim(); // 'en' | 'hi' | 'hinglish'
+      const isEnglish = reqLang === 'en';
+      const isHinglish = reqLang === 'hinglish';
+
       const userQuery = message.trim();
-      const lowerQuery = userQuery.toLowerCase().replace(/[?.!,;:]/g, '').trim();
-      const greetings = ['hi', 'hello', 'namaste', 'namaskar', 'hallo', 'helo', 'hey', 'kaise ho', 'good morning', 'good afternoon', 'good evening', 'hallo sir', 'hello sir', 'hi sir', 'greetings'];
-      const isGreeting = greetings.some(g => lowerQuery === g || lowerQuery.startsWith(g + ' ')) && 
-                         !lowerQuery.includes('dard') && !lowerQuery.includes('pain') && 
-                         !lowerQuery.includes('ilaj') && !lowerQuery.includes('blockage') && 
-                         !lowerQuery.includes('nas') && !lowerQuery.includes('घुटने') && 
-                         !lowerQuery.includes('कमर') && !lowerQuery.includes('सिर') && 
-                         !lowerQuery.includes('दर्द');
+      const cleanLower = userQuery
+        .toLowerCase()
+        .replace(/[?.!,;:'"\\/()_\[\]{}]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      // Specific health issue markers - only triggered when a real medical issue or symptom is mentioned
+      const hasSpecificHealthIssue =
+        // Headache specific (do not match bare 'sir' or 'सर')
+        cleanLower.includes('sir dard') || cleanLower.includes('sar dard') || cleanLower.includes('sir me dard') ||
+        cleanLower.includes('sar me dard') || cleanLower.includes('headache') || cleanLower.includes('migraine') ||
+        cleanLower.includes('सिरदर्द') || cleanLower.includes('सरदर्द') || cleanLower.includes('सिर दर्द') ||
+        cleanLower.includes('सर दर्द') || cleanLower.includes('सिर में दर्द') || cleanLower.includes('सर में दर्द') ||
+        cleanLower.includes('माथा दर्द') || cleanLower.includes('आधासीसी') ||
+        // Other specific ailments
+        cleanLower.includes('ghutna') || cleanLower.includes('ghutne') || cleanLower.includes('knee') ||
+        cleanLower.includes('घुटना') || cleanLower.includes('घुटने') || cleanLower.includes('घुटनों') ||
+        cleanLower.includes('gathiya') || cleanLower.includes('गठिया') || cleanLower.includes('arthritis') ||
+        cleanLower.includes('kamar dard') || cleanLower.includes('back pain') || cleanLower.includes('कमर दर्द') ||
+        cleanLower.includes('कमर में दर्द') || cleanLower.includes('slip disc') || cleanLower.includes('स्लिप डिस्क') ||
+        cleanLower.includes('पीठ दर्द') || cleanLower.includes('cervical') || cleanLower.includes('सर्वाइकल') ||
+        cleanLower.includes('gardan dard') || cleanLower.includes('neck pain') || cleanLower.includes('गर्दन दर्द') ||
+        cleanLower.includes('गर्दन में दर्द') || cleanLower.includes('frozen shoulder') || cleanLower.includes('कंधे में दर्द') ||
+        cleanLower.includes('sciatica') || cleanLower.includes('साइटिका') || cleanLower.includes('dabi nas') ||
+        cleanLower.includes('दबी नस') || cleanLower.includes('नस दब') || cleanLower.includes('nerve blockage') ||
+        cleanLower.includes('blockage') || cleanLower.includes('ब्लॉकेज') || cleanLower.includes('sunnpan') ||
+        cleanLower.includes('सुन्न') || cleanLower.includes('झनझनाहट') || cleanLower.includes('tingling') ||
+        cleanLower.includes('numbness') || cleanLower.includes('kabz') || cleanLower.includes('कब्ज') ||
+        cleanLower.includes('constipation') || cleanLower.includes('pet dard') || cleanLower.includes('stomach pain') ||
+        cleanLower.includes('पेट में दर्द') || cleanLower.includes('acidity') || cleanLower.includes('एसिडिटी') ||
+        cleanLower.includes('lakwa') || cleanLower.includes('लकवा') || cleanLower.includes('paralysis') ||
+        cleanLower.includes('stroke') || cleanLower.includes('पक्षाघात') || cleanLower.includes('moch') ||
+        cleanLower.includes('मोच') || cleanLower.includes('sprain') || cleanLower.includes('haddi dard') ||
+        cleanLower.includes('हड्डी में दर्द') || cleanLower.includes('cp child') || cleanLower.includes('सीपी') ||
+        cleanLower.includes('cerebral palsy');
+
+      // Comprehensive list of conversational greetings and casual inquiries
+      const greetingPhrases = [
+        'hi', 'hello', 'namaste', 'namaskar', 'pranam', 'pranaam', 'hey', 'helo', 'hallo', 'greetings',
+        'kaise ho', 'kaise hain', 'aap kaise ho', 'aap kaise hain', 'sir aap kaise hain',
+        'sir kaise hain', 'sir kaise ho', 'kya haal hai', 'kya haal chaal', 'sab theek',
+        'how are you', 'how r u', 'how are you doing', 'how do you do', 'good morning',
+        'good afternoon', 'good evening', 'good day', 'good night', 'who are you', 'what can you do',
+        'kya karte ho', 'kya kar sakte ho', 'help me', 'madad chahiye', 'namaste sir', 'hello doctor',
+        'hi doctor', 'thanks', 'thank you', 'shukriya', 'dhanyawad', 'dhanyawaad', 'welcome',
+        'नमस्ते', 'नमस्कार', 'प्रणाम', 'हैलो', 'हेलो', 'हाय', 'आप कैसे हैं', 'सर आप कैसे हैं',
+        'कैसे हैं आप', 'कैसे हो', 'क्या हाल है', 'शुभ प्रभात', 'धन्यवाद', 'शुक्रिया'
+      ];
+
+      const isGreeting =
+        !hasSpecificHealthIssue &&
+        (greetingPhrases.some(
+          (phrase) =>
+            cleanLower === phrase ||
+            cleanLower.startsWith(phrase + ' ') ||
+            cleanLower.endsWith(' ' + phrase) ||
+            cleanLower.includes(' ' + phrase + ' ')
+        ) ||
+          cleanLower.includes('kaise hain') ||
+          cleanLower.includes('kaise ho') ||
+          cleanLower.includes('kya haal') ||
+          cleanLower.includes('how are you') ||
+          cleanLower.includes('how r u') ||
+          cleanLower.includes('how do you do') ||
+          cleanLower === 'sir' ||
+          cleanLower === 'doctor' ||
+          cleanLower === 'namaste' ||
+          cleanLower === 'hello' ||
+          cleanLower === 'hi');
 
       if (isGreeting) {
-        return res.json({ reply: "नमस्ते! 🙏 मैं बिंदसुख केयर असिस्टेंट हूँ। आपकी क्या सहायता कर सकता हूँ? आप अपनी किसी भी शारीरिक परेशानी (जैसे सिर दर्द, घुटने का दर्द, नसों की समस्या) के बारे में पूछ सकते हैं।" });
+        if (isEnglish) {
+          return res.json({
+            reply:
+              'Hello! I am doing well, thank you for asking! 😊 How can I assist you with Bindsukh Acupressure & Acupuncture Center today?\n\nYou can ask me about our 100% drugless therapies, consultation fees (₹500 1st visit / ₹200 follow-up), clinic timings, clinic location in Prayagraj, or describe any health concerns you would like guidance on.',
+          });
+        }
+        if (isHinglish) {
+          return res.json({
+            reply:
+              'Namaste! 🙏 Main bilkul theek hoon, poochne ke liye shukriya. Bindsukh Acupressure Center me aapka swagat hai! Main aapki kya madad kar sakta hoon?\n\nAap clinic timings, consultation fees (₹500 1st visit / ₹200 follow-up), therapies ya kisi bhi dard/swasthya pareshani ke baare me pooch sakte hain.',
+          });
+        }
+        return res.json({
+          reply:
+            'नमस्ते! 🙏 मैं बहुत अच्छा हूँ, पूछने के लिए धन्यवाद। बिंदसुख एक्यूप्रेशर एवं एक्यूपंक्चर सेंटर में आपका हार्दिक स्वागत है! आज मैं आपकी क्या सहायता कर सकता हूँ?\n\nआप क्लिनिक समय, परामर्श शुल्क (पहली बार ₹500 / दोबारा ₹200), थैरेपी या किसी भी शारीरिक परेशानी के बारे में पूछ सकते हैं।',
+        });
       }
 
       const apiKey = process.env.GEMINI_API_KEY;
 
-      const systemPrompt = `You are the smart and empathetic "Bindsukh Care Assistant" for Bindsukh Acupressure & Acupuncture Center (हीलिंग थ्रू टच एंड मैग्नेट), Puramufti, Prayagraj.
+      const languageDirective = isEnglish
+        ? `CRITICAL LANGUAGE REQUIREMENT: The user's active interface language is ENGLISH. You MUST write your ENTIRE response STRICTLY in clean English. Do NOT output any Hindi or Devanagari text. Use English headings, remedy explanations, cautions, and clinic info.`
+        : isHinglish
+        ? `CRITICAL LANGUAGE REQUIREMENT: The user's active interface language is HINGLISH. You MUST write your response in conversational Hindi using Roman English script (Hinglish).`
+        : `CRITICAL LANGUAGE REQUIREMENT: The user's active interface language is HINDI. You MUST write your ENTIRE response in clear, supportive Hindi (Devanagari script).`;
+
+      const systemPrompt = `You are the smart and empathetic "Bindsukh Care Assistant" for Bindsukh Acupressure & Acupuncture Center (Healing Through Touch & Magnet), Puramufti, Prayagraj.
 Your job is to guide patients with genuine care, helpful holistic tips, and clinic booking assistance.
+
+${languageDirective}
+
+GREETINGS & CASUAL MESSAGES PROTOCOL:
+- If the user sends a greeting or asks how you or the doctor is doing (e.g. "Hello", "How are you?", "Sir aap kaise hain", "Kaise ho"), DO NOT output medical remedy templates (like LI4 acupressure point). Respond warmly, politely, and ask how you can assist them with Bindsukh Clinic today.
 
 CLINIC CORE KNOWLEDGE:
 - Lead Clinical Specialist: Therapist Saurabh Prajapati (Master in Acupressure, Master Diploma in Acupuncture, Diploma in Chiropractic).
@@ -333,11 +424,11 @@ CLINIC CORE KNOWLEDGE:
 - Direct Call/WhatsApp: +91 9455110097 / +91 9455100097.
 
 CORE THERAPIES OFFERED:
-1. Acupressure Therapy (एक्यूप्रेशर): Diagnostic touch and meridian magnet application.
-2. Acupuncture Therapy (एक्यूपंक्चर): Sterile disposable micro-needles activating nerves and natural endorphin pain relief.
-3. Chiropractic Adjustment (काइरोप्रैक्टिक): Spinal realignment, posture correction, and lumbar/cervical decompression.
-4. Cupping Therapy / Hijama (कपिंग थेरेपी): Myofascial vacuum decompression for localized blood flow and detox.
-5. Kinesiology Taping (काइनेसियोलॉजी टेपिंग): Musculoskeletal support and joint stabilization.
+1. Acupressure Therapy: Diagnostic touch and meridian magnet application.
+2. Acupuncture Therapy: Sterile disposable micro-needles activating nerves and natural endorphin pain relief.
+3. Chiropractic Adjustment: Spinal realignment, posture correction, and lumbar/cervical decompression.
+4. Cupping Therapy / Hijama: Myofascial vacuum decompression for localized blood flow and detox.
+5. Kinesiology Taping: Musculoskeletal support and joint stabilization.
 6. Acupressure Massage: Deep soft-tissue meridian release.
 
 SPECIALIZED CONDITIONS RELIEVED:
@@ -355,35 +446,23 @@ SPECIALIZED CONDITIONS RELIEVED:
 
 ----------------------------------------------------
 🎯 RESPONSE STRATEGY FOR PATIENT HEALTH QUERIES:
-Whenever a patient mentions any pain, symptom, or health problem (e.g., ghutne me dard, back pain, cervical, headache, constipation, paralysis, sciatica, slip disc, moch, dabi nas, etc.), you MUST follow this EXACT 3-step response format:
+Whenever a patient mentions any pain, symptom, or health problem, follow this structured format in the requested language:
 
-Step 1. 💡 Immediate Short Solution / Home Remedy:
-- Provide 1 or 2 quick, safe, easy-to-do home care tips or simple self-acupressure points for immediate short-term relief.
-- Example (for Knee Pain): Warm oil compress (sarson/til tel), gentle joint rotation, or pressing acupressure points around the knee cap (Eye of the knee / ST-35).
-- Keep this solution short, practical, and clear (in 2-3 simple bullet points).
+Step 1. 💡 Immediate Short Solution / Home Remedies:
+- Provide 1 or 2 quick, safe, easy-to-do home care tips or simple self-acupressure points for immediate short-term relief (2-3 bullet points).
 
 Step 2. ⚠️ Important Caution & Next Step:
-- Softly state the caution in the user's language:
-  * In Hinglish: "Agar in gharelu upayo se aaram na mile ya pareshani purani/gambhir hai, toh bina kisi dava ke permanent ilaj ke liye humare clinic aayein."
-  * In Hindi: "यदि इन घरेलू उपायों से आराम न मिले या परेशानी पुरानी/गंभीर है, तो बिना किसी दवा के स्थायी इलाज के लिए हमारे क्लिनिक आएं।"
-  * In English: "If these home remedies do not provide relief or if the condition is chronic/severe, please visit our clinic for permanent, 100% drugless healing."
+- Softly state the caution in the requested language:
+  * English: "If these home remedies do not provide relief in 10-15 minutes or if the condition persists, please visit our clinic for permanent, 100% drugless healing."
+  * Hindi: "अगर 10-15 मिनट में आराम न मिले या दर्द लगातार बना रहे, तो बिना दवा permanent इलाज के लिए क्लीनिक आएं।"
+  * Hinglish: "Agar in gharelu upayo se 10-15 minute me aaram na mile, toh bina dawa permanent ilaj ke liye clinic aayein."
 
 Step 3. 🏥 Clinic Contact & Appointment Guide:
 - Suggest seeing Therapist Saurabh Prajapati (Master in Acupressure & Acupuncture).
-- Provide quick clinic details:
-  • Timing: 8:30 AM to 4:00 PM (Monday - Saturday) | Sunday Morning 8:30 AM - 12:00 PM
-  • Fee: ₹500 (1st Visit) / ₹200 (Returning)
-  • Address: Puramufti Purani Bazar, Prayagraj (Near Panchayat Bhawan)
-  • Direct Call/WhatsApp: +91 9455110097
-- Conclude with the direct call-to-action text:
-  👉 [Book Appointment Now] (or "अपॉइंटमेंट अभी बुक करें")
+- Provide quick clinic details (Timing: 8:30 AM to 4:00 PM | Sun 8:30 AM - 12:00 PM, Fee: ₹500 1st visit / ₹200 follow-up, Address: Puramufti Purani Bazar, Prayagraj, Call/WhatsApp: +91 9455110097).
+- Conclude with the call-to-action text: 👉 [Book Appointment Now]
 
-----------------------------------------------------
-🌐 LANGUAGE TONE:
-- Match the user's preferred language (Hindi, Hinglish, or English).
-- Always maintain a supportive, respectful, compassionate, and medical-professional tone.
-- CRITICAL: When the user asks about ANY pain, symptom, or health question, DO NOT output any generic introductory greeting like "नमस्ते! मैं आपका बिंदसुख केयर असिस्टेंट हूँ". Start directly with Step 1 (Immediate Short Solution / Home Remedies), then Step 2 (Caution line), then Step 3 (Clinic Details & 👉 [Book Appointment Now]).
-- Keep answers structured with icons and bullet points so patients can read comfortably on mobile.`;
+Keep answers structured with icons and bullet points so patients can read comfortably on mobile.`;
 
       // 1. Try Gemini AI if API key is present
       if (apiKey) {
@@ -393,28 +472,46 @@ Step 3. 🏥 Clinic Contact & Appointment Guide:
             model: 'gemini-2.5-flash',
             contents: userQuery,
             config: {
-              systemInstruction: systemPrompt
-            }
+              systemInstruction: systemPrompt,
+            },
           });
 
           if (response.text) {
             const trimmed = response.text.trim();
-            // Ensure no generic greeting slipped through for health queries
-            const lowerQuery = userQuery.toLowerCase();
-            const hasHealthQuery = lowerQuery.includes('दर्द') || lowerQuery.includes('pain') || lowerQuery.includes('घुटने') || lowerQuery.includes('कमर') || lowerQuery.includes('सिर') || lowerQuery.includes('सर') || lowerQuery.includes('neck') || lowerQuery.includes('dard');
-            if (!hasHealthQuery || (!trimmed.startsWith('नमस्ते! मैं आपका') && !trimmed.startsWith('Hello! I am your'))) {
-              return res.json({ reply: trimmed });
-            }
+            return res.json({ reply: trimmed });
           }
         } catch (apiErr: any) {
           console.warn('[Gemini API] Call error, using grounded fallback:', apiErr.message || apiErr);
         }
       }
 
-      // 2. Comprehensive Grounded Symptom Advice Lookup
-      const lower = userQuery.toLowerCase().trim();
-      const CAUTION_LINE = 'अगर 10-15 मिनट में आराम न मिले या दर्द लगातार बना रहे, तो बिना दवा permanent इलाज के लिए क्लीनिक आएं।';
-      const CLINIC_BOOKING_FOOTER = `🏥 **3. क्लिनिक संपर्क व परामर्श (Clinic Consultation & Booking):**
+      // 2. Comprehensive Multi-lingual Grounded Symptom Advice Lookup
+      const lower = cleanLower;
+      const CAUTION_LINE = isEnglish
+        ? 'If these home remedies do not provide relief in 10-15 minutes or if the pain persists, please visit our clinic for permanent, 100% drugless healing.'
+        : isHinglish
+        ? 'Agar 10-15 minute me aaram na mile ya dard lagatar bana rahe, toh bina dawa permanent ilaj ke liye clinic aayein.'
+        : 'अगर 10-15 मिनट में आराम न मिले या दर्द लगातार बना रहे, तो बिना दवा permanent इलाज के लिए क्लीनिक आएं।';
+
+      const CLINIC_BOOKING_FOOTER = isEnglish
+        ? `🏥 **3. Clinic Contact & Consultation Guide:**
+Consult Therapist Saurabh Prajapati (Master in Acupressure & Acupuncture) for 100% drugless permanent relief.
+• **Timing:** 8:30 AM to 4:00 PM (Monday - Saturday) | Sunday Morning 8:30 AM - 12:00 PM
+• **Fee:** ₹500 (1st Visit) / ₹200 (Returning Patient)
+• **Address:** Puramufti Purani Bazar, Prayagraj (Near Panchayat Bhawan)
+• **Helpline / WhatsApp:** +91 9455110097 / +91 9455100097
+
+👉 **[Book Appointment Now]**`
+        : isHinglish
+        ? `🏥 **3. Clinic Contact & Consultation Guide:**
+Therapist Saurabh Prajapati (Master in Acupressure & Acupuncture) dwara 100% drugless permanent ilaj.
+• **Timing:** 8:30 AM se 4:00 PM (Mon-Sat) | Sunday 8:30 AM - 12:00 PM
+• **Fee:** ₹500 (1st Visit) / ₹200 (Follow-up)
+• **Address:** Puramufti Purani Bazar, Prayagraj (Near Panchayat Bhawan)
+• **Helpline / WhatsApp:** +91 9455110097
+
+👉 **[Book Appointment Now]**`
+        : `🏥 **3. क्लिनिक संपर्क व परामर्श (Clinic Consultation & Booking):**
 थेरेपिस्ट सौरभ प्रजापति (Master in Acupressure & Acupuncture) द्वारा 100% ड्रगलेस स्थायी उपचार।
 • **समय:** 8:30 AM से 4:00 PM (सोम-शनि) | रविवार 8:30 AM - 12:00 PM
 • **फीस:** ₹500 (पहला परामर्श) / ₹200 (फॉलो-अप)
@@ -427,13 +524,12 @@ Step 3. 🏥 Clinic Contact & Appointment Guide:
 
       // 1. Headache / Sir Dard / Migraine
       const isHeadache =
-        lower.includes('सिर') || lower.includes('सिरदर्द') || lower.includes('सर दर्द') ||
-        lower.includes('सर में दर्द') || lower.includes('सिर में दर्द') || lower.includes('माइग्रेन') ||
-        lower.includes('migraine') || lower.includes('headache') || lower.includes('head pain') ||
-        lower.includes('sir dard') || lower.includes('sar dard') || lower.includes('sir me dard') ||
-        lower.includes('sar me dard') || lower.includes('माथा') || lower.includes('आधासीसी') ||
-        ((lower.includes('दर्द') || lower.includes('dard') || lower.includes('pain')) &&
-         (lower.includes('सर') || lower.includes('सिर') || lower.includes('head') || lower.includes('sar') || lower.includes('sir')));
+        lower.includes('सिरदर्द') || lower.includes('सरदर्द') || lower.includes('सर दर्द') ||
+        lower.includes('सिर दर्द') || lower.includes('सिर में दर्द') || lower.includes('सर में दर्द') ||
+        lower.includes('माइग्रेन') || lower.includes('migraine') || lower.includes('headache') ||
+        lower.includes('head pain') || lower.includes('sir dard') || lower.includes('sar dard') ||
+        lower.includes('sir me dard') || lower.includes('sar me dard') || lower.includes('माथा दर्द') ||
+        lower.includes('आधासीसी');
 
       // 2. Knee Pain / Ghutna / Arthritis / Gathiya
       const isKnee =
@@ -444,7 +540,7 @@ Step 3. 🏥 Clinic Contact & Appointment Guide:
       // 3. Back Pain / Kamar Dard / Slip Disc / Spine / L4-L5
       const isBack =
         lower.includes('कमर') || lower.includes('पीठ') || lower.includes('kamar') ||
-        lower.includes('back') || lower.includes('slip disc') || lower.includes('स्लिप डिस्क') ||
+        lower.includes('back pain') || lower.includes('slip disc') || lower.includes('स्लिप डिस्क') ||
         lower.includes('spine') || lower.includes('l4') || lower.includes('l5') || lower.includes('लंबर');
 
       // 4. Cervical / Neck Pain / Gardan / Kandha / Shoulder / Frozen Shoulder
@@ -488,138 +584,128 @@ Step 3. 🏥 Clinic Contact & Appointment Guide:
         lower.includes('सीपी') || lower.includes('cp child') || lower.includes('cerebral palsy') ||
         lower.includes('बच्चा') || lower.includes('बच्चे') || lower.includes('चलने');
 
-      // 11. General Pain / Dard / Takleef / Pareshani / Problem / Ilaj
-      const isGeneralHealth =
-        lower.includes('दर्द') || lower.includes('pain') || lower.includes('dard') ||
-        lower.includes('तकलीफ') || lower.includes('takleef') || lower.includes('परेशानी') ||
-        lower.includes('pareshani') || lower.includes('बीमारी') || lower.includes('bimari') ||
-        lower.includes('इलाज') || lower.includes('ilaj') || lower.includes('उपचार') ||
-        lower.includes('upchar') || lower.includes('समस्या') || lower.includes('problem') ||
-        lower.includes('hurts') || lower.includes('chot') || lower.includes('चोट');
+      // 11. Fees
+      const isFeeQuery =
+        lower.includes('फीस') || lower.includes('शुल्क') || lower.includes('fee') ||
+        lower.includes('cost') || lower.includes('charge') || lower.includes('rupee') ||
+        lower.includes('रुपये') || lower.includes('price');
 
-      if (isHeadache) {
-        fallback = `💡 **1. तुरंत आराम के लिए 2 सरल उपाय / एक्यूप्रेशर बिंदु (Home Remedies):**
-• **LI4 एक्यूप्रेशर बिंदु (हेगु पॉइंट):** अपने हाथ के अंगूठे और तर्जनी (Index finger) के बीच के उभरे हुए मांसल हिस्से को 2-3 मिनट गहरे दबाव के साथ दबाएं। इससे सिर की नसों को तुरंत शांति व आराम मिलता है।
-• **हाइड्रेशन व विश्राम:** 1 गिलास गुनगुना पानी पिएं, मोबाइल/स्क्रीन से 15 मिनट दूरी बनाएं और माथे पर हल्का ठंडा या गीला कपड़ा रखकर आंखें बंद करके शांत लेटें।
+      // 12. Timing
+      const isTimeQuery =
+        lower.includes('समय') || lower.includes('time') || lower.includes('timing') ||
+        lower.includes('दिन') || lower.includes('open') || lower.includes('hour') ||
+        lower.includes('sunday');
 
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-${CAUTION_LINE}
+      // 13. Address / Location
+      const isLocationQuery =
+        lower.includes('पता') || lower.includes('address') || lower.includes('कहाँ') ||
+        lower.includes('location') || lower.includes('map') || lower.includes('दिशा') ||
+        lower.includes('where');
 
-${CLINIC_BOOKING_FOOTER}`;
-      } else if (isKnee) {
-        fallback = `💡 **1. तुरंत आराम के लिए 2 सरल उपाय / एक्यूप्रेशर बिंदु (Home Remedies):**
-• **ST-35 घुटने का एक्यूप्रेशर (Eye of the Knee):** घुटने की कटोरी (Knee Cap) के ठीक नीचे दोनों तरफ के गड्ढों को दोनों अंगूठों से 2 मिनट हल्के दबाव के साथ गोल घुमाते हुए दबाएं।
-• **हल्की गरम सिंकाई व मूवमेंट:** सरसों या तिल के तेल में मेथी दाना पकाकर घुटने पर हल्के हाथ से मालिश करें और 10 मिनट गरम तौलिये से सेकें। कुर्सी पर बैठकर पैर को धीरे-धीरे सीधा व मोड़ें।
+      // 14. Doctor / Therapist
+      const isDoctorQuery =
+        lower.includes('डॉक्टर') || lower.includes('थेरेपिस्ट') || lower.includes('doctor') ||
+        lower.includes('therapist') || lower.includes('saurabh') || lower.includes('सौरभ');
 
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-${CAUTION_LINE}
-
-${CLINIC_BOOKING_FOOTER}`;
-      } else if (isBack) {
-        fallback = `💡 **1. तुरंत आराम के लिए 2 सरल उपाय / एक्यूप्रेशर बिंदु (Home Remedies):**
-• **हैंड एक्यूप्रेशर पॉइंट:** हाथ के पिछले हिस्से पर रिंग फिंगर और मिडिल फिंगर के बीच की हड्डी वाली नाली को कलाई की ओर 2 मिनट अंगूठे से दबाएं।
-• **समतल बिस्तर व जेंटल कोबरा पोज:** बहुत मुलायम गद्दे से बचें, समतल तख्त या फर्म मैट्रेस पर लेटें और घुटनों के नीचे तकिया रखें। पेट के बल लेटकर हाथों के सहारे छाती को 15-20 सेकंड हल्का ऊपर उठाएं (भुजंगासन)।
-
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-${CAUTION_LINE}
+      if (isFeeQuery) {
+        if (isEnglish) {
+          fallback = `Bindsukh Acupressure Center Consultation & Therapy Fees:
+• **First Visit (New Patient):** ₹500
+• **Returning / Follow-up Patient:** ₹200
+Includes comprehensive meridian diagnosis, magnet therapy, acupressure, and specialist guidance.
 
 ${CLINIC_BOOKING_FOOTER}`;
-      } else if (isCervical) {
-        fallback = `💡 **1. तुरंत आराम के लिए 2 सरल उपाय / एक्यूप्रेशर बिंदु (Home Remedies):**
-• **अंगूठे का एक्यूप्रेशर पॉइंट:** दोनों हाथों के अंगूठे के पिछले भाग (जो सर्वाइकल स्पाइन का मेरिडियन है) को दूसरे हाथ के अंगूठे से 2-3 मिनट दबाएं।
-• **मोटा तकिया छोड़ें व जेंटल नेक स्ट्रेच:** सोते समय मोटा तकिया तुरंत हटाएं और गर्दन को धीरे-धीरे दाएं-बाएं और ऊपर-नीचे स्ट्रेच करें (झटका बिल्कुल न दें)।
-
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-${CAUTION_LINE}
+        } else if (isHinglish) {
+          fallback = `Bindsukh Acupressure Center Consultation & Therapy Fees:
+• **Pehli Baar (1st Visit / New Patient):** ₹500
+• **Dobara Aane Par (Follow-up):** ₹200
+Isme complete meridian diagnosis, magnet therapy aur specialist guidance shamil hai.
 
 ${CLINIC_BOOKING_FOOTER}`;
-      } else if (isSciatica) {
-        fallback = `💡 **1. तुरंत आराम के लिए 2 सरल उपाय / एक्यूप्रेशर बिंदु (Home Remedies):**
-• **एड़ी व तलवे का एक्यूप्रेशर:** एड़ी के अंदरूनी व बाहरी किनारे के गड्ढों को 2 मिनट अंगूठे से हल्के दबाव के साथ दबाएं।
-• **पैर को सहारा व सिंकाई:** पीठ के बल लेटकर घुटनों के नीचे तकिया रखें ताकि साइटिक नर्व पर खिंचाव कम हो, और कूल्हे से जांघ तक 10 मिनट गुनगुनी सिकाई करें।
-
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-${CAUTION_LINE}
-
-${CLINIC_BOOKING_FOOTER}`;
-      } else if (isDigestion) {
-        fallback = `💡 **1. तुरंत आराम के लिए 2 सरल उपाय / एक्यूप्रेशर बिंदु (Home Remedies):**
-• **हथेली का एक्यूप्रेशर (पाचन बिंदु):** दोनों हथेलियों के बिल्कुल बीच वाले भाग को अंगूठे से 2 मिनट क्लॉकवाइज गोलाई में दबाएं।
-• **गुनगुना पानी व नाभि मसाज:** 2 गिलास गुनगुना पानी पिएं और नाभि के चारों ओर क्लॉकवाइज हल्के हाथ से 5 मिनट मालिश करें।
-
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-${CAUTION_LINE}
-
-${CLINIC_BOOKING_FOOTER}`;
-      } else if (isNerve) {
-        fallback = `💡 **1. तुरंत आराम के लिए 2 सरल उपाय / एक्यूप्रेशर बिंदु (Home Remedies):**
-• **वार्म एंड कूल कंप्रेस:** प्रभावित हिस्से पर 10 मिनट गुनगुनी सिकाई के बाद 5 मिनट ठंडा कपड़ा रखें, इससे नसों की सूजन तुरंत कम होती है।
-• **दबाव से बचाव:** प्रभावित अंग पर अधिक वजन न डालें और बिना झटका दिए जेंटल स्ट्रेच करें।
-
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-${CAUTION_LINE}
-
-${CLINIC_BOOKING_FOOTER}`;
-      } else if (isSprain) {
-        fallback = `💡 **1. तुरंत आराम के लिए 2 सरल उपाय (Home Remedies):**
-• **R.I.C.E. आइस कंप्रेस:** मोच वाले हिस्से पर तुरंत 10-15 मिनट बर्फ की सिकाई करें और क्रेप बैंडेज से हल्का सहारा दें (झटके से न चटकाएं)।
-• **ऊंचाई पर रखें (Elevation):** सोते समय पैर या हाथ के नीचे तकिया रखें ताकि सूजन न बढ़े और जोड़ को पूरा आराम दें।
-
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-${CAUTION_LINE}
-
-${CLINIC_BOOKING_FOOTER}`;
-      } else if (isParalysis) {
-        fallback = `💡 **1. तुरंत देखभाल के 2 घरेलू उपाय (Home Care):**
-• **उंगलियों की जेंटल मूवमेंट:** प्रभावित हाथ-पैरों की उंगलियों को दिन में 3-4 बार धीरे-धीरे सीधा करें और मोड़ें ताकि जोड़ जाम न हों।
-• **गुनगुना तिल का तेल व पोरों का दबाव:** तिल के तेल से नीचे से ऊपर की दिशा में हल्की मालिश करें और हाथ-पैरों के सबसे ऊपरी पोरों (Fingertips) को हल्के से दबाएं।
-
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-${CAUTION_LINE}
-
-${CLINIC_BOOKING_FOOTER}`;
-      } else if (isCPChild) {
-        fallback = `💡 **1. बच्चों के लिए घरेलू देखभाल (Home Care):**
-• **सौम्य तेल मालिश:** बच्चों के पैरों और पंजों की गुनगुने तिल या जैतून के तेल से नियमित सौम्य मालिश करें।
-• **सपोर्टिव स्टैंडिंग प्रैक्टिस:** बच्चे को दोनों हाथों से पकड़कर सीधे खड़े होने और पैर जमीन पर टिकाने का रोज 10-15 मिनट अभ्यास कराएं।
-
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-${CAUTION_LINE}
-
-${CLINIC_BOOKING_FOOTER}`;
-      } else if (isGeneralHealth) {
-        fallback = `💡 **1. तुरंत आराम के लिए 2 सरल उपाय / एक्यूप्रेशर बिंदु (Home Remedies):**
-• **LI4 मास्टर पेन रिलीवर बिंदु (हेगु):** हाथ के अंगूठे और तर्जनी उंगली के बीच वाले हिस्से को 2 मिनट दबाएं — यह शरीर के किसी भी हिस्से के दर्द और तनाव को कम करने का प्रमुख एक्यूप्रेशर बिंदु है।
-• **गुनगुनी सिंकाई व विश्राम:** दर्द वाले हिस्से पर 10-15 मिनट हल्की गुनगुनी सिकाई करें और लंबी गहरी सांसें लेकर शरीर को तनावमुक्त रखें।
-
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-${CAUTION_LINE}
-
-${CLINIC_BOOKING_FOOTER}`;
-      } else if (lower.includes('फीस') || lower.includes('शुल्क') || lower.includes('fee') || lower.includes('cost') || lower.includes('charge') || lower.includes('rupee') || lower.includes('रुपये')) {
-        fallback = `बिंदसुख एक्यूप्रेशर सेंटर में परामर्श एवं थेरेपी शुल्क:
+        } else {
+          fallback = `बिंदसुख एक्यूप्रेशर सेंटर में परामर्श एवं थेरेपी शुल्क:
 • **पहली बार (1st Visit / New Patient):** ₹500
 • **दोबारा आने पर (Returning / Follow-up):** मात्र ₹200
 इसमें विस्तृत मेरिडियन डायग्नोसिस, मैग्नेट/एक्यूप्रेशर एवं परामर्श शामिल है।
 
 ${CLINIC_BOOKING_FOOTER}`;
-      } else if (lower.includes('समय') || lower.includes('time') || lower.includes('timing') || lower.includes('दिन') || lower.includes('open') || lower.includes('hour') || lower.includes('sunday')) {
-        fallback = `क्लिनिक परामर्श समय (Clinic Timings):
+        }
+      } else if (isTimeQuery) {
+        if (isEnglish) {
+          fallback = `Bindsukh Clinic Consultation Timings:
+• **Monday to Saturday:** 8:30 AM to 4:00 PM
+• **Sunday Morning:** 8:30 AM to 12:00 PM
+Feature: To avoid crowding, each 1-hour slot is strictly limited to 5 patients max.
+
+${CLINIC_BOOKING_FOOTER}`;
+        } else if (isHinglish) {
+          fallback = `Bindsukh Clinic Timings:
+• **Monday se Saturday:** 8:30 AM se 4:00 PM
+• **Sunday Morning:** 8:30 AM se 12:00 PM
+Specialty: Bheed se bachne ke liye har 1 ghante ke slot me sirf 5 patients ko hi book kiya jata hai.
+
+${CLINIC_BOOKING_FOOTER}`;
+        } else {
+          fallback = `क्लिनिक परामर्श समय (Clinic Timings):
 • **सोमवार से शनिवार (Monday - Saturday):** सुबह 8:30 AM से शाम 4:00 PM
 • **रविवार (Sunday Morning):** सुबह 8:30 AM से दोपहर 12:00 PM
 विशेषता: भीड़ से बचने के लिए प्रत्येक 1-घंटे के स्लॉट में अधिकतम 5 मरीजों को ही समय दिया जाता है।
 
 ${CLINIC_BOOKING_FOOTER}`;
-      } else if (lower.includes('पता') || lower.includes('address') || lower.includes('कहाँ') || lower.includes('location') || lower.includes('map') || lower.includes('दिशा')) {
-        fallback = `क्लिनिक का पता एवं लोकेशन:
+        }
+      } else if (isLocationQuery) {
+        if (isEnglish) {
+          fallback = `Clinic Address & Location:
+**Bindsukh Acupressure & Acupuncture Center**
+Puramufti Purani Bazar, Near Puramufti Panchayat Bhawan, Prayagraj, UP - 212208
+(~8 km from Bamrauli Airport, ~16 km from Prayagraj Junction)
+📞 Direct Helpline: +91 9455110097 / +91 9455100097
+
+👉 **[Book Appointment Now]**`;
+        } else if (isHinglish) {
+          fallback = `Clinic Ka Pata (Location):
+**Bindsukh Acupressure & Acupuncture Center**
+Puramufti Purani Bazar, Near Puramufti Panchayat Bhawan, Prayagraj (UP) - 212208
+(~8 km Bamrauli Airport se, ~16 km Prayagraj Junction se)
+📞 Helpline / WhatsApp: +91 9455110097 / +91 9455100097
+
+👉 **[Book Appointment Now]**`;
+        } else {
+          fallback = `क्लिनिक का पता एवं लोकेशन:
 **बिंदसुख एक्यूप्रेशर एवं एक्यूपंक्चर सेंटर**
 पुरामुफ्ती पुरानी बाजार, निकट पुरामुफ्ती पंचायत भवन, प्रयागराज (उ.प्र.) 212208
 (बमरौली से ~8 किमी, प्रयागराज जंक्शन से ~16 किमी)
 📞 हेल्पलाइन / WhatsApp: +91 9455110097 / +91 9455100097
 
 👉 **[Book Appointment Now]**`;
-      } else if (lower.includes('डॉक्टर') || lower.includes('थेरेपिस्ट') || lower.includes('doctor') || lower.includes('therapist') || lower.includes('saurabh') || lower.includes('सौरभ')) {
-        fallback = `मुख्य चिकित्सक परिचय:
+        }
+      } else if (isDoctorQuery) {
+        if (isEnglish) {
+          fallback = `Lead Specialist Profile:
+**THERAPIST: SAURABH PRAJAPATI**
+• Master in Acupressure
+• Master Diploma in Acupuncture
+• Diploma in Chiropractic
+Certified specialist in drugless holistic sciences relieving knee pain, back pain, cervical, sciatica, sprains, and pinched nerves without surgery or medicine.
+• Consultation Fee: ₹500 (1st Visit) / ₹200 (Follow-up)
+• Timings: 8:30 AM to 4:00 PM (Mon-Sat) | Sun 8:30 AM - 12:00 PM
+• Direct Contact: +91 9455110097
+
+👉 **[Book Appointment Now]**`;
+        } else if (isHinglish) {
+          fallback = `Lead Specialist Profile:
+**THERAPIST: SAURABH PRAJAPATI**
+• Master in Acupressure
+• Master Diploma in Acupuncture
+• Diploma in Chiropractic
+Bina dawa aur bina surgery knee pain, back pain, cervical, sciatica, sprains aur dabi nas ka permanent natural ilaj.
+• Consultation Fee: ₹500 (1st Visit) / ₹200 (Follow-up)
+• Timings: 8:30 AM to 4:00 PM (Mon-Sat) | Sun 8:30 AM - 12:00 PM
+• Direct Contact: +91 9455110097
+
+👉 **[Book Appointment Now]**`;
+        } else {
+          fallback = `मुख्य चिकित्सक परिचय:
 **THERAPIST: SAURABH PRAJAPATI**
 • Master in Acupressure
 • Master Diploma in Acupuncture
@@ -630,15 +716,223 @@ ${CLINIC_BOOKING_FOOTER}`;
 • हेल्पलाइन: +91 9455110097
 
 👉 **[Book Appointment Now]**`;
-      } else {
-        fallback = `💡 **1. तुरंत आराम के लिए 2 सरल उपाय / एक्यूप्रेशर बिंदु (Home Remedies & Tips):**
-• **LI4 मास्टर पेन रिलीवर बिंदु (हेगु):** अपने हाथ के अंगूठे और तर्जनी उंगली के बीच वाले उभरे हुए हिस्से को 2 मिनट दबाएं। यह शरीर के किसी भी हिस्से के दर्द और तनाव को कम करने का प्रमुख बिंदु है।
-• **सिकाई व विश्राम:** प्रभावित हिस्से पर 10-15 मिनट हल्की गुनगुनी सिकाई करें और गहरी सांसें लेकर शरीर की मांसपेशियों को तनावमुक्त रखें।
+        }
+      } else if (isHeadache) {
+        if (isEnglish) {
+          fallback = `💡 **1. Immediate Short Solution / Home Remedies (Headache & Migraine):**
+• **LI4 Acupressure Point (Hegu):** Firmly press the webbed muscle between your thumb and index finger for 2-3 minutes. This immediately relieves cranial tension and headache.
+• **Hydration & Dark Room Rest:** Drink a glass of warm water, avoid screens for 15 minutes, and place a cool damp cloth over your forehead with eyes closed.
 
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-Agar 10-15 min me aaram na mile, toh clinic me Therapist Saurabh Prajapati se milein.
+⚠️ **2. Important Caution:**
+${CAUTION_LINE}
 
 ${CLINIC_BOOKING_FOOTER}`;
+        } else if (isHinglish) {
+          fallback = `💡 **1. Immediate Short Solution / Home Remedies (Sir Dard & Migraine):**
+• **LI4 Acupressure Point (Hegu):** Angoothe aur index finger ke beech ke masal hisse ko 2-3 minute achhe se dabayein. Isse sir ke dard aur tension me turant aaram milta hai.
+• **Gunguna Paani & Rest:** 1 glass gunguna paani piyein, 15 minute mobile screen se door rahein aur shaant kamre me aaram karein.
+
+⚠️ **2. Important Caution:**
+${CAUTION_LINE}
+
+${CLINIC_BOOKING_FOOTER}`;
+        } else {
+          fallback = `💡 **1. तुरंत आराम के लिए 2 सरल उपाय / एक्यूप्रेशर बिंदु (Home Remedies):**
+• **LI4 एक्यूप्रेशर बिंदु (हेगु पॉइंट):** अपने हाथ के अंगूठे और तर्जनी (Index finger) के बीच के उभरे हुए मांसल हिस्से को 2-3 मिनट गहरे दबाव के साथ दबाएं। इससे सिर की नसों को तुरंत शांति व आराम मिलता है।
+• **हाइड्रेशन व विश्राम:** 1 गिलास गुनगुना पानी पिएं, मोबाइल/स्क्रीन से 15 मिनट दूरी बनाएं और माथे पर हल्का ठंडा या गीला कपड़ा रखकर आंखें बंद करके शांत लेटें।
+
+⚠️ **2. ज़रूरी सावधानी (Important Caution):**
+${CAUTION_LINE}
+
+${CLINIC_BOOKING_FOOTER}`;
+        }
+      } else if (isKnee) {
+        if (isEnglish) {
+          fallback = `💡 **1. Immediate Short Solution / Home Remedies (Knee Pain & Arthritis):**
+• **ST-35 Knee Acupressure Point:** Gently press the indentations just below both sides of the knee cap with your thumbs for 2 minutes in circular motions.
+• **Warm Oil Compress:** Massage warm mustard or sesame oil with fenugreek seeds around the knee, followed by 10 minutes of warm towel fomentation.
+
+⚠️ **2. Important Caution:**
+${CAUTION_LINE}
+
+${CLINIC_BOOKING_FOOTER}`;
+        } else if (isHinglish) {
+          fallback = `💡 **1. Immediate Short Solution / Home Remedies (Ghutne Ka Dard):**
+• **ST-35 Knee Acupressure:** Ghutne ki katori ke dono taraf ke gaddho ko 2 minute angoothe se gol ghumate hue dabayein.
+• **Garam Tel Malish:** Gungune sarson ya til ke tel se ghutne ke charo taraf halke hath se malish karein aur 10 minute garam senk lein.
+
+⚠️ **2. Important Caution:**
+${CAUTION_LINE}
+
+${CLINIC_BOOKING_FOOTER}`;
+        } else {
+          fallback = `💡 **1. तुरंत आराम के लिए 2 सरल उपाय / एक्यूप्रेशर बिंदु (Home Remedies):**
+• **ST-35 घुटने का एक्यूप्रेशर (Eye of the Knee):** घुटने की कटोरी (Knee Cap) के ठीक नीचे दोनों तरफ के गड्ढों को दोनों अंगूठों से 2 मिनट हल्के दबाव के साथ गोल घुमाते हुए दबाएं।
+• **हल्की गरम सिंकाई व मूवमेंट:** सरसों या तिल के तेल में मेथी दाना पकाकर घुटने पर हल्के हाथ से मालिश करें और 10 मिनट गरम तौलिये से सेकें। कुर्सी पर बैठकर पैर को धीरे-धीरे सीधा व मोड़ें।
+
+⚠️ **2. ज़रूरी सावधानी (Important Caution):**
+${CAUTION_LINE}
+
+${CLINIC_BOOKING_FOOTER}`;
+        }
+      } else if (isBack) {
+        if (isEnglish) {
+          fallback = `💡 **1. Immediate Short Solution / Home Remedies (Back Pain & Slip Disc):**
+• **Hand Spine Acupressure Point:** Press the groove on the back of your hand between the ring finger and middle finger down toward the wrist for 2 minutes with your thumb.
+• **Firm Bed & Gentle Cobra Stretch:** Avoid ultra-soft mattresses, rest on a firm bed with a pillow under your knees, and practice gentle cobra stretch for 15-20 seconds.
+
+⚠️ **2. Important Caution:**
+${CAUTION_LINE}
+
+${CLINIC_BOOKING_FOOTER}`;
+        } else if (isHinglish) {
+          fallback = `💡 **1. Immediate Short Solution / Home Remedies (Kamar Dard & Slip Disc):**
+• **Hand Spine Point:** Hath ke pichhle hisse par ring finger aur middle finger ke beech ki line ko wrist ki taraf angoothe se 2 minute dabayein.
+• **Firm Bed Rest:** Bahut mulayam gadde se bachein, seedhe let kar ghutno ke neeche takiya rakhein aur halka cobra stretch karein.
+
+⚠️ **2. Important Caution:**
+${CAUTION_LINE}
+
+${CLINIC_BOOKING_FOOTER}`;
+        } else {
+          fallback = `💡 **1. तुरंत आराम के लिए 2 सरल उपाय / एक्यूप्रेशर बिंदु (Home Remedies):**
+• **हैंड एक्यूप्रेशर पॉइंट:** हाथ के पिछले हिस्से पर रिंग फिंगर और मिडिल फिंगर के बीच की हड्डी वाली नाली को कलाई की ओर 2 मिनट अंगूठे से दबाएं।
+• **समतल बिस्तर व जेंटल कोबरा पोज:** बहुत मुलायम गद्दे से बचें, समतल तख्त या फर्म मैट्रेस पर लेटें और घुटनों के नीचे तकिया रखें। पेट के बल लेटकर हाथों के सहारे छाती को 15-20 सेकंड हल्का ऊपर उठाएं (भुजंगासन)।
+
+⚠️ **2. ज़रूरी सावधानी (Important Caution):**
+${CAUTION_LINE}
+
+${CLINIC_BOOKING_FOOTER}`;
+        }
+      } else if (isCervical) {
+        if (isEnglish) {
+          fallback = `💡 **1. Immediate Short Solution / Home Remedies (Cervical & Neck Pain):**
+• **Thumb Acupressure Point:** Press the back of your thumb (cervical spine reflex meridian) with your other thumb for 2-3 minutes.
+• **Pillow Adjustment & Gentle Neck Rotation:** Remove thick pillows when sleeping and gently rotate your neck side-to-side and up-and-down without jerking.
+
+⚠️ **2. Important Caution:**
+${CAUTION_LINE}
+
+${CLINIC_BOOKING_FOOTER}`;
+        } else if (isHinglish) {
+          fallback = `💡 **1. Immediate Short Solution / Home Remedies (Cervical & Gardan Dard):**
+• **Thumb Acupressure Point:** Angoothe ke pichhle hisse ko doosre hath ke angoothe se 2-3 minute dabayein.
+• **Mota Takiya Hatayein:** Sote waqt mota takiya na lagayein aur gardan ko dheere-dheere aage-peeche aur daayein-baayein stretch karein.
+
+⚠️ **2. Important Caution:**
+${CAUTION_LINE}
+
+${CLINIC_BOOKING_FOOTER}`;
+        } else {
+          fallback = `💡 **1. तुरंत आराम के लिए 2 सरल उपाय / एक्यूप्रेशर बिंदु (Home Remedies):**
+• **अंगूठे का एक्यूप्रेशर पॉइंट:** दोनों हाथों के अंगूठे के पिछले भाग (जो सर्वाइकल स्पाइन का मेरिडियन है) को दूसरे हाथ के अंगूठे से 2-3 मिनट दबाएं।
+• **मोटा तकिया छोड़ें व जेंटल नेक स्ट्रेच:** सोते समय मोटा तकिया तुरंत हटाएं और गर्दन को धीरे-धीरे दाएं-बाएं और ऊपर-नीचे स्ट्रेच करें (झटका बिल्कुल न दें)।
+
+⚠️ **2. ज़रूरी सावधानी (Important Caution):**
+${CAUTION_LINE}
+
+${CLINIC_BOOKING_FOOTER}`;
+        }
+      } else if (isSciatica || isNerve) {
+        if (isEnglish) {
+          fallback = `💡 **1. Immediate Short Solution / Home Remedies (Sciatica & Pinched Nerve):**
+• **Heel & Sole Acupressure:** Press the pressure indentations around the inner and outer edge of your heel for 2 minutes with moderate pressure.
+• **Pillow Elevation & Warm Fomentation:** Lie on your back with a pillow supporting under your knees to ease nerve tension, and apply warm fomentation from lower hip to thigh for 10 minutes.
+
+⚠️ **2. Important Caution:**
+${CAUTION_LINE}
+
+${CLINIC_BOOKING_FOOTER}`;
+        } else if (isHinglish) {
+          fallback = `💡 **1. Immediate Short Solution / Home Remedies (Sciatica & Dabi Nas):**
+• **Heel & Sole Point:** Edi ke dono kinaro ke gaddho ko 2 minute angoothe se halka dabayein.
+• **Pillow Support & Senk:** Ghutno ke neeche takiya rakhkar letien aur kamar se pair tak 10 minute gunguni senk karein.
+
+⚠️ **2. Important Caution:**
+${CAUTION_LINE}
+
+${CLINIC_BOOKING_FOOTER}`;
+        } else {
+          fallback = `💡 **1. तुरंत आराम के लिए 2 सरल उपाय / एक्यूप्रेशर बिंदु (Home Remedies):**
+• **एड़ी व तलवे का एक्यूप्रेशर:** एड़ी के अंदरूनी व बाहरी किनारे के गड्ढों को 2 मिनट अंगूठे से हल्के दबाव के साथ दबाएं।
+• **पैर को सहारा व सिंकाई:** पीठ के बल लेटकर घुटनों के नीचे तकिया रखें ताकि साइटिक नर्व पर खिंचाव कम हो, और कूल्हे से जांघ तक 10 मिनट गुनगुनी सिकाई करें।
+
+⚠️ **2. ज़रूरी सावधानी (Important Caution):**
+${CAUTION_LINE}
+
+${CLINIC_BOOKING_FOOTER}`;
+        }
+      } else if (isDigestion) {
+        if (isEnglish) {
+          fallback = `💡 **1. Immediate Short Solution / Home Remedies (Constipation & Digestion):**
+• **Palm Acupressure Point (Digestive Center):** Press the exact center of both palms with your thumb in clockwise circular motions for 2 minutes.
+• **Warm Water & Navel Massage:** Drink 2 glasses of warm water and gently massage around your navel in a clockwise direction for 5 minutes.
+
+⚠️ **2. Important Caution:**
+${CAUTION_LINE}
+
+${CLINIC_BOOKING_FOOTER}`;
+        } else if (isHinglish) {
+          fallback = `💡 **1. Immediate Short Solution / Home Remedies (Kabz & Digestion):**
+• **Palm Digestion Point:** Hatheli ke beech wale hisse ko angoothe se clockwise 2 minute dabayein.
+• **Gunguna Paani & Nabhi Massage:** 2 glass gunguna paani piyein aur nabhi ke charo taraf halke hath se circular massage karein.
+
+⚠️ **2. Important Caution:**
+${CAUTION_LINE}
+
+${CLINIC_BOOKING_FOOTER}`;
+        } else {
+          fallback = `💡 **1. तुरंत आराम के लिए 2 सरल उपाय / एक्यूप्रेशर बिंदु (Home Remedies):**
+• **हथेली का एक्यूप्रेशर (पाचन बिंदु):** दोनों हथेलियों के बिल्कुल बीच वाले भाग को अंगूठे से 2 मिनट क्लॉकवाइज गोलाई में दबाएं।
+• **गुनगुना पानी व नाभि मसाज:** 2 गिलास गुनगुना पानी पिएं और नाभि के चारों ओर क्लॉकवाइज हल्के हाथ से 5 मिनट मालिश करें।
+
+⚠️ **2. ज़रूरी सावधानी (Important Caution):**
+${CAUTION_LINE}
+
+${CLINIC_BOOKING_FOOTER}`;
+        }
+      } else {
+        // General helpful response instead of forcing LI4 points
+        if (isEnglish) {
+          fallback = `Hello! 🙏 I am the Bindsukh Care Assistant. How can I best assist you today?
+
+• **100% Drugless Therapies:** Acupressure, Acupuncture, Chiropractic, Cupping & Natural Healing.
+• **Specialist:** Therapist Saurabh Prajapati (Master in Acupressure & Acupuncture)
+• **Consultation Fee:** ₹500 (1st Visit) / ₹200 (Follow-up)
+• **Timings:** Monday to Saturday 8:30 AM to 4:00 PM | Sunday Morning 8:30 AM to 12:00 PM
+• **Address:** Puramufti Purani Bazar, Prayagraj (Near Panchayat Bhawan)
+• **Helpline / WhatsApp:** +91 9455110097
+
+Please tell me if you are experiencing any pain or condition (e.g. Knee pain, Back pain, Sciatica, Cervical, Pinched nerve, Migraine, or Sprain) and I will provide immediate home care tips and appointment guidance!
+
+${CLINIC_BOOKING_FOOTER}`;
+        } else if (isHinglish) {
+          fallback = `Namaste! 🙏 Main Bindsukh Care Assistant hoon. Main aapki kya madad kar sakta hoon?
+
+• **100% Drugless Therapies:** Acupressure, Acupuncture, Chiropractic & Magnet Therapy
+• **Specialist:** Therapist Saurabh Prajapati (Master in Acupressure & Acupuncture)
+• **Consultation Fee:** ₹500 (1st Visit) / ₹200 (Follow-up)
+• **Timings:** Monday se Saturday 8:30 AM se 4:00 PM | Sunday Morning 8:30 AM se 12:00 PM
+• **Address:** Puramufti Purani Bazar, Prayagraj
+• **Helpline:** +91 9455110097
+
+Aap humein apni takleef ya dard (jaise ghutna dard, kamar dard, cervical, sciatica, dabi nas ya sir dard) ke baare me batayein, hum turant gharelu upchar aur clinic margdarshan pradan karenge!
+
+${CLINIC_BOOKING_FOOTER}`;
+        } else {
+          fallback = `नमस्ते! 🙏 मैं बिंदसुख केयर असिस्टेंट हूँ। आज मैं आपकी क्या सहायता कर सकता हूँ?
+
+• **100% प्राकृतिक पद्धतियाँ:** एक्यूप्रेशर, एक्यूपंक्चर, काइरोप्रैक्टिक व मैग्नेट थैरेपी
+• **विशेषज्ञ:** थेरेपिस्ट सौरभ प्रजापति (Master in Acupressure & Acupuncture)
+• **परामर्श शुल्क:** ₹500 (पहला परामर्श) / ₹200 (फॉलो-अप)
+• **समय:** सोमवार से शनिवार 8:30 AM से 4:00 PM | रविवार 8:30 AM से 12:00 PM
+• **पता:** पुरामुफ्ती पुरानी बाजार, प्रयागराज (निकट पंचायत भवन)
+• **हेल्पलाइन:** +91 9455110097
+
+कृपया अपनी किसी भी शारीरिक परेशानी या दर्द (जैसे घुटने का दर्द, कमर दर्द, सर्वाइकल, साइटिका, दबी नस, सिरदर्द) के बारे में बताएं, हम आपको तुरंत उपयोगी घरेलू देखभाल व क्लिनिक परामर्श की जानकारी देंगे!
+
+${CLINIC_BOOKING_FOOTER}`;
+        }
       }
 
       res.json({ reply: fallback });
