@@ -46,6 +46,7 @@ import { PublicShareModal } from './PublicShareModal';
 import { useClinicLogo } from '../utils/logoHelper';
 import { subscribeToAppointments, saveAppointmentToFirestore, testFirestoreConnection } from '../utils/firebase';
 import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
+import { getAbsoluteApiUrl, safeParseJsonResponse } from '../utils/appUrlHelper';
 
 interface AdminPanelProps {
   onSelectReceipt: (apt: PatientAppointment) => void;
@@ -119,22 +120,87 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
     }
   });
 
+  // Helper to read and merge appointments from all client-side localStorage keys
+  const getLocalStoredAppointments = (targetDate?: string): PatientAppointment[] => {
+    const list: PatientAppointment[] = [];
+    const keysToCheck = [
+      'bindsukh_local_appointments',
+      'appointments',
+      'user_bookings',
+      'bindsukh_active_booking',
+    ];
+
+    keysToCheck.forEach((k) => {
+      try {
+        const raw = localStorage.getItem(k);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((item) => {
+            if (item && (item.id || item.tokenNumber)) {
+              if (!targetDate || item.appointmentDate === targetDate) {
+                list.push(item);
+              }
+            }
+          });
+        } else if (parsed && (parsed.id || parsed.tokenNumber)) {
+          if (!targetDate || parsed.appointmentDate === targetDate) {
+            list.push(parsed);
+          }
+        }
+      } catch (e) {
+        // ignore parse errors
+      }
+    });
+
+    return list;
+  };
+
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/appointments?date=${selectedDate}`);
+      const endpoint = getAbsoluteApiUrl(`/api/appointments?date=${selectedDate}`);
+      const res = await fetch(endpoint);
+      let serverData: PatientAppointment[] = [];
+      
       if (res.ok) {
-        const data = await res.json();
-        setAppointments(data);
+        const parsed = await safeParseJsonResponse<PatientAppointment[]>(res);
+        if (parsed.ok && Array.isArray(parsed.data)) {
+          serverData = parsed.data;
+        }
       }
+
+      // Dual Read: Merge server data with all localStorage keys
+      const mergedMap = new Map<string, PatientAppointment>();
+
+      // 1. Add server appointments
+      serverData.forEach((a) => {
+        if (a && a.id) {
+          mergedMap.set(a.id, a);
+        }
+      });
+
+      // 2. Add local storage appointments
+      const localList = getLocalStoredAppointments(selectedDate);
+      localList.forEach((a) => {
+        const key = a.id || a.tokenNumber;
+        if (key && !mergedMap.has(a.id)) {
+          mergedMap.set(a.id, a);
+        }
+      });
+
+      const combined = Array.from(mergedMap.values());
+      setAppointments(combined);
     } catch (err) {
-      console.error('Error fetching admin appointments:', err);
+      console.error('Error fetching admin appointments, falling back to localStorage:', err);
+      const localOnly = getLocalStoredAppointments(selectedDate);
+      setAppointments(localOnly);
     } finally {
       setLoading(false);
     }
   };
 
-  // Firestore real-time live sync subscription
+  // Firestore real-time live sync subscription & Local Booking Event Listener
   useEffect(() => {
     testFirestoreConnection().then(setFirestoreConnected);
     const unsubscribe = subscribeToAppointments((liveApts) => {
@@ -152,7 +218,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
         });
       }
     });
-    return () => unsubscribe();
+
+    // Real-Time Event Listener: When a user confirms a booking on user side, immediately sync into console
+    const handleAppointmentBooked = (event: Event) => {
+      const customEvent = event as CustomEvent<PatientAppointment>;
+      const newApt = customEvent.detail;
+      if (newApt) {
+        setAppointments((prev) => {
+          const map = new Map<string, PatientAppointment>();
+          prev.forEach((a) => map.set(a.id, a));
+          if (!selectedDate || newApt.appointmentDate === selectedDate) {
+            map.set(newApt.id, newApt);
+          }
+          return Array.from(map.values());
+        });
+      }
+      fetchAppointments();
+    };
+
+    window.addEventListener('clinic_appointment_booked', handleAppointmentBooked);
+    window.addEventListener('storage', fetchAppointments);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener('clinic_appointment_booked', handleAppointmentBooked);
+      window.removeEventListener('storage', fetchAppointments);
+    };
   }, [selectedDate]);
 
   const handleResetToFresh = async () => {
@@ -447,6 +538,52 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
     }
   };
 
+  // Helper to sync appointment updates into all localStorage stores and broadcast event
+  const syncLocalAppointmentUpdate = (updatedApt: PatientAppointment) => {
+    try {
+      const keys = ['bindsukh_local_appointments', 'appointments', 'user_bookings'];
+      keys.forEach((k) => {
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          try {
+            const list: PatientAppointment[] = JSON.parse(raw);
+            if (Array.isArray(list)) {
+              const idx = list.findIndex(
+                (a) => a.id === updatedApt.id || (a.tokenNumber && a.tokenNumber === updatedApt.tokenNumber)
+              );
+              if (idx !== -1) {
+                list[idx] = { ...list[idx], ...updatedApt };
+              } else {
+                list.unshift(updatedApt);
+              }
+              localStorage.setItem(k, JSON.stringify(list.slice(0, 50)));
+            }
+          } catch (e) {}
+        }
+      });
+
+      // Also update bindsukh_active_booking if it matches
+      const activeRaw = localStorage.getItem('bindsukh_active_booking');
+      if (activeRaw) {
+        try {
+          const activeApt = JSON.parse(activeRaw);
+          if (
+            activeApt &&
+            (activeApt.id === updatedApt.id ||
+              (activeApt.tokenNumber && activeApt.tokenNumber === updatedApt.tokenNumber))
+          ) {
+            localStorage.setItem(
+              'bindsukh_active_booking',
+              JSON.stringify({ ...activeApt, ...updatedApt })
+            );
+          }
+        } catch (e) {}
+      }
+
+      window.dispatchEvent(new CustomEvent('clinic_appointment_booked', { detail: updatedApt }));
+    } catch (e) {}
+  };
+
   useEffect(() => {
     fetchAppointments();
   }, [selectedDate]);
@@ -455,7 +592,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
   const handleMarkAsDone = async (id: string) => {
     try {
       setActionInProgressId(id);
-      const res = await fetch(`/api/appointments/${id}/status`, {
+      const endpoint = getAbsoluteApiUrl(`/api/appointments/${id}/status`);
+      const res = await fetch(endpoint, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -466,6 +604,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
       if (res.ok) {
         const updated = await res.json();
         setAppointments((prev) => prev.map((a) => (a.id === id ? updated : a)));
+        syncLocalAppointmentUpdate(updated);
+        try {
+          await saveAppointmentToFirestore(updated);
+        } catch (_) {}
       }
     } catch (err) {
       console.error('Error marking as done:', err);
@@ -478,7 +620,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
   const handleStatusChange = async (id: string, newStatus: any) => {
     try {
       setActionInProgressId(id);
-      const res = await fetch(`/api/appointments/${id}/status`, {
+      const endpoint = getAbsoluteApiUrl(`/api/appointments/${id}/status`);
+      const res = await fetch(endpoint, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
@@ -486,6 +629,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
       if (res.ok) {
         const updated = await res.json();
         setAppointments((prev) => prev.map((a) => (a.id === id ? updated : a)));
+        syncLocalAppointmentUpdate(updated);
+        try {
+          await saveAppointmentToFirestore(updated);
+        } catch (_) {}
       }
     } catch (err) {
       console.error('Error updating status:', err);
@@ -498,7 +645,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
   const handleTriggerDueReminders = async () => {
     try {
       setProcessingReminders(true);
-      const res = await fetch('/api/reminders/process-due', { method: 'POST' });
+      const endpoint = getAbsoluteApiUrl('/api/reminders/process-due');
+      const res = await fetch(endpoint, { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
         setReminderNotice(`Automated pass complete: Dispatched ${data.processedCount} reminder(s). 24h queue is synced!`);
@@ -516,15 +664,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
   const handleConfirmAttendance = async (id: string) => {
     try {
       setActionInProgressId(id);
-      const res = await fetch(`/api/appointments/${id}/confirm-attendance`, {
+      const endpoint = getAbsoluteApiUrl(`/api/appointments/${id}/confirm-attendance`);
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notes: 'Confirmed in Therapist Console' }),
       });
       if (res.ok) {
         const data = await res.json();
-        setAppointments((prev) => prev.map((a) => (a.id === id ? data.appointment : a)));
-        setReminderNotice(`Attendance confirmed for ${data.appointment.patientName}!`);
+        const updated = data.appointment;
+        setAppointments((prev) => prev.map((a) => (a.id === id ? updated : a)));
+        syncLocalAppointmentUpdate(updated);
+        try {
+          await saveAppointmentToFirestore(updated);
+        } catch (_) {}
+        setReminderNotice(`Attendance confirmed for ${updated.patientName}!`);
         setTimeout(() => setReminderNotice(null), 4000);
       }
     } catch (err) {
@@ -538,15 +692,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
   const handleSendReminderNow = async (id: string, channel: 'whatsapp' | 'sms' = 'whatsapp') => {
     try {
       setActionInProgressId(id);
-      const res = await fetch(`/api/appointments/${id}/send-reminder`, {
+      const endpoint = getAbsoluteApiUrl(`/api/appointments/${id}/send-reminder`);
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ channel }),
       });
       if (res.ok) {
         const data = await res.json();
-        setAppointments((prev) => prev.map((a) => (a.id === id ? data.appointment : a)));
-        setReminderNotice(`Reminder sent to ${data.appointment.patientName} via ${channel.toUpperCase()}!`);
+        const updated = data.appointment;
+        setAppointments((prev) => prev.map((a) => (a.id === id ? updated : a)));
+        syncLocalAppointmentUpdate(updated);
+        setReminderNotice(`Reminder sent to ${updated.patientName} via ${channel.toUpperCase()}!`);
         setTimeout(() => setReminderNotice(null), 4000);
       }
     } catch (err) {
@@ -560,7 +717,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
   const handleSimulateReplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/incoming-reply', {
+      const endpoint = getAbsoluteApiUrl('/api/incoming-reply');
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -585,17 +743,41 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
     setTimeout(() => setCopiedId(null), 2500);
   };
 
-  // Filter appointments by search query and status
+  // Filter appointments by search query and status with case-insensitive & payment-method tolerance
   const filteredAppointments = useMemo(() => {
     return appointments.filter((apt) => {
+      if (!apt) return false;
+      const cleanSearch = searchQuery.trim().toLowerCase();
       const matchesSearch =
-        !searchQuery.trim() ||
-        apt.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        apt.patientPhone.includes(searchQuery.replace(/\D/g, '')) ||
-        apt.tokenNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (apt.condition && apt.condition.toLowerCase().includes(searchQuery.toLowerCase()));
+        !cleanSearch ||
+        (apt.patientName && apt.patientName.toLowerCase().includes(cleanSearch)) ||
+        (apt.patientPhone && apt.patientPhone.includes(cleanSearch.replace(/\D/g, ''))) ||
+        (apt.tokenNumber && apt.tokenNumber.toLowerCase().includes(cleanSearch)) ||
+        (apt.condition && apt.condition.toLowerCase().includes(cleanSearch)) ||
+        (apt.therapy && apt.therapy.toLowerCase().includes(cleanSearch));
 
-      const matchesStatus = statusFilter === 'all' || apt.status === statusFilter;
+      const status = (apt.status || 'scheduled').toLowerCase();
+      const paymentStatus = (apt.paymentStatus || 'pending').toLowerCase();
+      const paymentMethod = (apt.paymentMethod || 'pay_at_clinic').toLowerCase();
+
+      let matchesStatus = true;
+      if (statusFilter === 'all') {
+        matchesStatus = true;
+      } else if (statusFilter === 'scheduled') {
+        // Match 'scheduled', 'Scheduled', 'pending', 'confirmed', or 'pay_at_clinic'
+        matchesStatus =
+          status === 'scheduled' ||
+          status === 'pending' ||
+          status === 'confirmed' ||
+          paymentStatus === 'pending' ||
+          paymentMethod === 'pay_at_clinic';
+      } else if (statusFilter === 'in-progress') {
+        matchesStatus = status === 'in-progress' || status === 'in_progress';
+      } else if (statusFilter === 'completed') {
+        matchesStatus = status === 'completed' || paymentStatus === 'collected_at_clinic';
+      } else if (statusFilter === 'cancelled') {
+        matchesStatus = status === 'cancelled';
+      }
 
       return matchesSearch && matchesStatus;
     });
@@ -607,8 +789,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
 
   const groupedSlots = useMemo(() => {
     return slotsForDay.map((slot) => {
-      const patientsInSlot = filteredAppointments.filter((apt) => normalizeTimeSlot(apt.timeSlot) === slot);
-      const allActiveInSlot = appointments.filter((apt) => apt.status !== 'cancelled' && normalizeTimeSlot(apt.timeSlot) === slot);
+      const normalizedSlotName = normalizeTimeSlot(slot);
+      const patientsInSlot = filteredAppointments.filter(
+        (apt) => normalizeTimeSlot(apt.timeSlot) === normalizedSlotName
+      );
+      const allActiveInSlot = appointments.filter(
+        (apt) => (apt.status || '').toLowerCase() !== 'cancelled' && normalizeTimeSlot(apt.timeSlot) === normalizedSlotName
+      );
       const capacityUsed = allActiveInSlot.length;
 
       return {
@@ -622,12 +809,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
   }, [slotsForDay, filteredAppointments, appointments]);
 
   // Overview metrics
-  const totalBookedToday = appointments.filter((a) => a.status !== 'cancelled').length;
-  const completedToday = appointments.filter((a) => a.status === 'completed').length;
-  const scheduledToday = appointments.filter((a) => a.status === 'scheduled').length;
+  const totalBookedToday = appointments.filter((a) => (a.status || '').toLowerCase() !== 'cancelled').length;
+  const completedToday = appointments.filter((a) => (a.status || '').toLowerCase() === 'completed').length;
+  const scheduledToday = appointments.filter(
+    (a) => (a.status || '').toLowerCase() === 'scheduled' || (a.status || '').toLowerCase() === 'pending'
+  ).length;
   const totalRevenue = appointments
-    .filter((a) => a.status === 'completed' || a.paymentStatus === 'paid_online')
-    .reduce((sum, a) => sum + a.fee, 0);
+    .filter((a) => (a.status || '').toLowerCase() === 'completed' || a.paymentStatus === 'paid_online')
+    .reduce((sum, a) => sum + (a.fee || 0), 0);
 
   // Quick Walk-In Submission
   const handleAddWalkIn = async (e: React.FormEvent) => {
@@ -640,7 +829,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
     }
 
     try {
-      const res = await fetch('/api/appointments', {
+      const endpoint = getAbsoluteApiUrl('/api/appointments');
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -655,10 +845,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to add walk-in');
+      const parsed = await safeParseJsonResponse<PatientAppointment>(res);
+      if (!parsed.ok || !parsed.data) {
+        throw new Error(parsed.error || 'Failed to add walk-in');
       }
+
+      const newApt = parsed.data;
+      syncLocalAppointmentUpdate(newApt);
+      try {
+        await saveAppointmentToFirestore(newApt);
+      } catch (_) {}
 
       setShowWalkInModal(false);
       setWalkInName('');
