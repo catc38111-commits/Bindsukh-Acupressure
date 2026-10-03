@@ -1042,6 +1042,7 @@ ${CLINIC_BOOKING_FOOTER}`;
 
   app.post('/api/appointments', handleCreateAppointment);
   app.post('/api/book-appointment', handleCreateAppointment);
+  app.post('/api/book', handleCreateAppointment);
 
   // 6. Update appointment status (e.g., Mark as Done / Completed, In-progress, Cancelled)
   app.patch('/api/appointments/:id/status', (req, res) => {

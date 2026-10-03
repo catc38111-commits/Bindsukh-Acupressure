@@ -15,6 +15,7 @@ import {
 import { CLINIC_INFO, SERVICES_OFFERED, CONDITIONS_TREATED } from '../data/clinicData';
 import { PatientAppointment } from '../types';
 import { saveAppointmentToFirestore } from '../utils/firebase';
+import { getAbsoluteApiUrl, safeParseJsonResponse } from '../utils/appUrlHelper';
 
 interface QuickRegisterModalProps {
   isOpen: boolean;
@@ -103,6 +104,8 @@ export const QuickRegisterModal: React.FC<QuickRegisterModalProps> = ({
         console.warn('[Firestore] Sync notice:', fErr);
       }
 
+      window.dispatchEvent(new CustomEvent('clinic_appointment_booked', { detail: apt }));
+
       onRegistered(apt);
       onClose();
     };
@@ -111,7 +114,8 @@ export const QuickRegisterModal: React.FC<QuickRegisterModalProps> = ({
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     try {
-      const res = await fetch('/api/appointments', {
+      const endpoint = getAbsoluteApiUrl('/api/book-appointment');
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
@@ -129,13 +133,13 @@ export const QuickRegisterModal: React.FC<QuickRegisterModalProps> = ({
 
       clearTimeout(timeoutId);
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Server responded with status ${res.status}`);
+      const parsed = await safeParseJsonResponse<PatientAppointment>(res);
+
+      if (!parsed.ok || !parsed.data) {
+        throw new Error(parsed.error || `Server responded with status ${res.status}`);
       }
 
-      const data = await res.json();
-      await saveLocallyAndComplete(data);
+      await saveLocallyAndComplete(parsed.data);
     } catch (err: any) {
       clearTimeout(timeoutId);
       console.warn('Quick register fetch notice, using local storage fallback:', err);

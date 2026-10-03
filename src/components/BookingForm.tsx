@@ -7,6 +7,7 @@ import { saveAppointmentToFirestore } from '../utils/firebase';
 import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
 import { useLanguage } from '../context/LanguageContext';
 import { copyToClipboard } from '../utils/clipboard';
+import { getAbsoluteApiUrl, safeParseJsonResponse } from '../utils/appUrlHelper';
 import {
   Calendar,
   Clock,
@@ -188,51 +189,90 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
     }, 100);
   };
 
+  // Helper to merge local appointments into slot availability for guaranteed offline & instant sync
+  const mergeSlotsWithLocalAppointments = (rawSlots: SlotAvailability[], targetDate: string): SlotAvailability[] => {
+    try {
+      const localStr = localStorage.getItem('bindsukh_local_appointments');
+      if (!localStr) return rawSlots;
+      const localList: PatientAppointment[] = JSON.parse(localStr);
+      const activeLocalForDate = localList.filter(
+        (a) => a.appointmentDate === targetDate && a.status !== 'cancelled'
+      );
+      if (activeLocalForDate.length === 0) return rawSlots;
+
+      return rawSlots.map((s) => {
+        const existingIds = new Set((s.patientsInSlot || []).map((p) => p.id));
+        const missingLocal = activeLocalForDate.filter(
+          (l) => l.timeSlot === s.slot && !existingIds.has(l.id)
+        );
+        if (missingLocal.length === 0) return s;
+
+        const newBooked = Math.min(s.maxCapacity, s.bookedCount + missingLocal.length);
+        const newAvailable = Math.max(0, s.maxCapacity - newBooked);
+        return {
+          ...s,
+          bookedCount: newBooked,
+          availableCount: newAvailable,
+          isFull: newBooked >= s.maxCapacity,
+          patientsInSlot: [
+            ...(s.patientsInSlot || []),
+            ...missingLocal.map((m) => ({
+              id: m.id,
+              tokenNumber: m.tokenNumber,
+              patientName: m.patientName,
+              status: m.status
+            }))
+          ]
+        };
+      });
+    } catch (err) {
+      return rawSlots;
+    }
+  };
+
   // Fetch slot availability whenever date changes
   const fetchSlots = async (targetDate: string) => {
     try {
       setLoadingSlots(true);
-      const res = await fetch(`/api/slots?date=${targetDate}`, { cache: 'no-store' });
+      const endpoint = getAbsoluteApiUrl(`/api/slots?date=${targetDate}`);
+      const res = await fetch(endpoint, { cache: 'no-store' });
       const isToday = targetDate === todayStr();
       
-      if (res.ok) {
-        const data = await res.json();
-        const fetchedSlots = data.slots || [];
+      const parsed = await safeParseJsonResponse<{ slots: SlotAvailability[] }>(res);
+
+      if (parsed.ok && parsed.data) {
+        const rawSlots = parsed.data.slots || [];
+        const fetchedSlots = mergeSlotsWithLocalAppointments(
+          rawSlots.length > 0 ? rawSlots : generateFallbackSlots(),
+          targetDate
+        );
         
-        if (fetchedSlots.length === 0) {
-          const fallback = generateFallbackSlots();
-          setSlots(fallback);
-          // Find first non-expired fallback slot
-          const firstValid = fallback.find(s => !isSlotExpired(s.slot, isToday));
-          setSelectedSlot(firstValid ? firstValid.slot : '');
-        } else {
-          setSlots(fetchedSlots);
-          // Auto-select the first available upcoming valid slot by default when date changes
-          const currentSlotObj = fetchedSlots.find((s: SlotAvailability) => s.slot === selectedSlot);
-          const isCurrentExpired = selectedSlot ? isSlotExpired(selectedSlot, isToday) : true;
-          
-          if (!currentSlotObj || currentSlotObj.isFull || isCurrentExpired) {
-            const firstAvailableUpcoming = fetchedSlots.find((s: SlotAvailability) => {
-              const expired = isSlotExpired(s.slot, isToday);
-              return !s.isFull && !expired;
-            });
-            if (firstAvailableUpcoming) {
-              setSelectedSlot(firstAvailableUpcoming.slot);
-            } else {
-              // If no upcoming available slots left for today, default to empty to prompt choosing another date
-              setSelectedSlot('');
-            }
+        setSlots(fetchedSlots);
+        // Auto-select the first available upcoming valid slot by default when date changes
+        const currentSlotObj = fetchedSlots.find((s: SlotAvailability) => s.slot === selectedSlot);
+        const isCurrentExpired = selectedSlot ? isSlotExpired(selectedSlot, isToday) : true;
+        
+        if (!currentSlotObj || currentSlotObj.isFull || isCurrentExpired) {
+          const firstAvailableUpcoming = fetchedSlots.find((s: SlotAvailability) => {
+            const expired = isSlotExpired(s.slot, isToday);
+            return !s.isFull && !expired;
+          });
+          if (firstAvailableUpcoming) {
+            setSelectedSlot(firstAvailableUpcoming.slot);
+          } else {
+            // If no upcoming available slots left for today, default to empty to prompt choosing another date
+            setSelectedSlot('');
           }
         }
       } else {
-        const fallback = generateFallbackSlots();
+        const fallback = mergeSlotsWithLocalAppointments(generateFallbackSlots(), targetDate);
         setSlots(fallback);
         const firstValid = fallback.find(s => !isSlotExpired(s.slot, isToday));
         setSelectedSlot(firstValid ? firstValid.slot : '');
       }
     } catch (err) {
       console.error('Error fetching slots, falling back to local slots:', err);
-      const fallback = generateFallbackSlots();
+      const fallback = mergeSlotsWithLocalAppointments(generateFallbackSlots(), targetDate);
       setSlots(fallback);
       const isToday = targetDate === todayStr();
       const firstValid = fallback.find(s => !isSlotExpired(s.slot, isToday));
@@ -246,17 +286,33 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
     fetchSlots(date);
   }, [date]);
 
+  // Listen to global appointment creation events to refresh seat availability in real time
+  useEffect(() => {
+    const handleAppointmentBooked = (event: Event) => {
+      const customEvent = event as CustomEvent<PatientAppointment>;
+      if (customEvent.detail && customEvent.detail.appointmentDate === date) {
+        fetchSlots(date);
+      }
+    };
+    window.addEventListener('clinic_appointment_booked', handleAppointmentBooked);
+    return () => window.removeEventListener('clinic_appointment_booked', handleAppointmentBooked);
+  }, [date]);
+
   // Check phone number dynamically for past visit history & dynamic fee
   useEffect(() => {
     const cleanPhone = phone.replace(/\D/g, '').slice(-10);
     if (cleanPhone.length === 10) {
       setCheckingHistory(true);
-      fetch(`/api/check-patient/${cleanPhone}`)
-        .then((res) => res.json())
-        .then((data: PatientHistoryCheck) => {
-          setPatientHistory(data);
-          if (data.isReturning && data.patientName && !name.trim()) {
-            setName(data.patientName);
+      const endpoint = getAbsoluteApiUrl(`/api/check-patient/${cleanPhone}`);
+      fetch(endpoint)
+        .then((res) => safeParseJsonResponse<PatientHistoryCheck>(res))
+        .then((parsed) => {
+          if (parsed.ok && parsed.data) {
+            const data = parsed.data;
+            setPatientHistory(data);
+            if (data.isReturning && data.patientName && !name.trim()) {
+              setName(data.patientName);
+            }
           }
         })
         .catch((err) => console.error('Error checking patient history:', err))
@@ -419,8 +475,40 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
         console.warn('[Firestore] Sync notice:', fErr);
       }
 
+      // 1. Immediate optimistic UI update: increment seat counter in React state right away
+      setSlots((prevSlots) =>
+        prevSlots.map((s) => {
+          if (s.slot === apt.timeSlot && (!apt.appointmentDate || apt.appointmentDate === date)) {
+            const newBooked = Math.min(s.maxCapacity, s.bookedCount + 1);
+            const newAvailable = Math.max(0, s.maxCapacity - newBooked);
+            return {
+              ...s,
+              bookedCount: newBooked,
+              availableCount: newAvailable,
+              isFull: newBooked >= s.maxCapacity,
+              patientsInSlot: [
+                ...(s.patientsInSlot || []),
+                {
+                  id: apt.id,
+                  tokenNumber: apt.tokenNumber,
+                  patientName: apt.patientName,
+                  status: apt.status
+                }
+              ]
+            };
+          }
+          return s;
+        })
+      );
+
+      // 2. Broadcast booking event so all components/tabs refresh slot availability
+      window.dispatchEvent(new CustomEvent('clinic_appointment_booked', { detail: apt }));
+
       setIsUpiModalOpen(false);
-      fetchSlots(date);
+      
+      // 3. Re-fetch from backend / merged local store
+      await fetchSlots(apt.appointmentDate || date);
+
       onAppointmentCreated(apt);
       setSelectedSlot('');
       setNotes('');
@@ -442,7 +530,8 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     try {
-      const response = await fetch('/api/book-appointment', {
+      const endpointUrl = getAbsoluteApiUrl('/api/book-appointment');
+      const response = await fetch(endpointUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
@@ -462,13 +551,14 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
 
       clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || `Server responded with status ${response.status}`);
+      // Verify response.ok and headers include 'application/json' before calling response.json()
+      const parsed = await safeParseJsonResponse<PatientAppointment>(response);
+
+      if (!parsed.ok || !parsed.data) {
+        throw new Error(parsed.error || `Server responded with status ${response.status}`);
       }
 
-      const confirmedData = await response.json();
-      await saveLocallyAndComplete(confirmedData, false);
+      await saveLocallyAndComplete(parsed.data, false);
     } catch (err: any) {
       clearTimeout(timeoutId);
       console.warn('Booking network/server fetch notice, activating device persistence fallback:', err);

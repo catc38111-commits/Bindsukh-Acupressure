@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PatientAppointment } from '../types';
 import { CLINIC_INFO } from '../data/clinicData';
 import { downloadCalendarIcsFile } from '../utils/calendarHelper';
+import { getAbsoluteApiUrl, safeParseJsonResponse } from '../utils/appUrlHelper';
 import {
   Calendar,
   CalendarCheck,
@@ -42,32 +43,23 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
     try {
       setLoading(true);
       setSearched(true);
-      const res = await fetch(`/api/appointments?phone=${cleanPhone}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.length > 0) {
-          setAppointments(data);
-        } else {
-          // Check if stored matches
-          const stored = localStorage.getItem('bindsukh_active_booking');
-          if (stored) {
-            const apt = JSON.parse(stored) as PatientAppointment;
-            if (apt && apt.patientPhone && apt.patientPhone.replace(/\D/g, '').slice(-10) === cleanPhone) {
-              setAppointments([apt]);
-              return;
-            }
-          }
-          setAppointments([]);
-        }
+      const endpoint = getAbsoluteApiUrl(`/api/appointments?phone=${cleanPhone}`);
+      const res = await fetch(endpoint);
+      const parsed = await safeParseJsonResponse<PatientAppointment[]>(res);
+
+      if (parsed.ok && parsed.data && parsed.data.length > 0) {
+        setAppointments(parsed.data);
       } else {
-        // Fetch failed, check if stored matches
+        // Check if stored matches
         const stored = localStorage.getItem('bindsukh_active_booking');
         if (stored) {
           const apt = JSON.parse(stored) as PatientAppointment;
           if (apt && apt.patientPhone && apt.patientPhone.replace(/\D/g, '').slice(-10) === cleanPhone) {
             setAppointments([apt]);
+            return;
           }
         }
+        setAppointments([]);
       }
     } catch (err) {
       console.error('Error fetching patient appointments:', err);

@@ -48,6 +48,69 @@ export function getStoredPublicAppUrl(): string {
 }
 
 /**
+ * Resolves an absolute API endpoint URL (e.g. 'https://ais-dev-.../api/book') to prevent
+ * relative path routing issues in Android WebViews, APKs, and external wrappers.
+ */
+export function getAbsoluteApiUrl(endpointPath: string): string {
+  const path = endpointPath.startsWith('/') ? endpointPath : `/${endpointPath}`;
+
+  if (typeof window !== 'undefined') {
+    const origin = window.location.origin;
+    if (origin && origin.startsWith('http') && !origin.includes('file://')) {
+      return `${origin}${path}`;
+    }
+  }
+
+  const publicBase = getStoredPublicAppUrl().replace(/\/+$/, '');
+  return `${publicBase}${path}`;
+}
+
+/**
+ * Safely parses a fetch Response: checks response.ok and verifies content-type header
+ * includes 'application/json' before calling response.json() to prevent JSON parsing crashes.
+ */
+export async function safeParseJsonResponse<T = any>(
+  response: Response
+): Promise<{ ok: boolean; data: T | null; error?: string }> {
+  const contentType = response.headers.get('content-type') || '';
+  const isJson = contentType.toLowerCase().includes('application/json');
+
+  if (response.ok) {
+    if (isJson) {
+      try {
+        const data = await response.json();
+        return { ok: true, data };
+      } catch (e: any) {
+        return { ok: false, data: null, error: `Invalid JSON payload received: ${e.message}` };
+      }
+    } else {
+      const text = await response.text();
+      return { ok: true, data: text as unknown as T };
+    }
+  } else {
+    let errorMsg = `Server error (${response.status})`;
+    if (isJson) {
+      try {
+        const errObj = await response.json();
+        errorMsg = errObj.error || errObj.message || errorMsg;
+      } catch {
+        // fallback
+      }
+    } else {
+      try {
+        const rawText = await response.text();
+        if (rawText && rawText.length < 200 && !rawText.includes('<html')) {
+          errorMsg = rawText;
+        }
+      } catch {
+        // fallback
+      }
+    }
+    return { ok: false, data: null, error: errorMsg };
+  }
+}
+
+/**
  * Updates the stored custom public URL both in localStorage and on the server.
  */
 export async function setStoredPublicAppUrl(newUrl: string): Promise<boolean> {
