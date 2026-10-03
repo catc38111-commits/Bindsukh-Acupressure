@@ -68,3 +68,13 @@ export interface PatientFeedback {
   verifiedPatient?: boolean;
 }
 
+export interface PatientProfile {
+  name: string;
+  phone: string;
+  age?: string;
+  gender?: 'male' | 'female' | 'other' | '';
+  defaultCondition?: string;
+  notes?: string;
+  updatedAt?: string;
+}
+

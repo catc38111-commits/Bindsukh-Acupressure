@@ -447,3 +447,5 @@ export function printReceiptSlip(elementId: string = 'printable-slip-wrapper'): 
     console.warn('Window print failed:', e);
   }
 }
+
+export const generateAppointmentReceiptPdf = generateAndDownloadReceiptPdf;

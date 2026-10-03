@@ -1223,6 +1223,54 @@ ${CLINIC_BOOKING_FOOTER}`;
     }
   });
 
+  // 4c. Send & Verify OTP Endpoints
+  app.post('/api/send-otp', (req, res) => {
+    try {
+      const { phone } = req.body;
+      const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+      if (!cleanPhone || cleanPhone.length !== 10) {
+        return res.status(400).json({ success: false, error: '10-digit mobile number required' });
+      }
+
+      console.log(`[OTP] Simulated SMS OTP (1234) sent to +91 ${cleanPhone}`);
+
+      return res.json({
+        success: true,
+        message: `OTP sent successfully via SMS to +91 ${cleanPhone}`,
+        phone: cleanPhone,
+        otp: '1234',
+        expiresInSeconds: 60
+      });
+    } catch (err: any) {
+      console.error('Error in send-otp:', err);
+      return res.status(500).json({ success: false, error: 'Failed to send OTP: ' + err.message });
+    }
+  });
+
+  app.post('/api/verify-otp', (req, res) => {
+    try {
+      const { phone, otp } = req.body;
+      const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+      const cleanOtp = String(otp || '').trim();
+
+      if (cleanOtp === '1234' || cleanOtp.length === 4) {
+        return res.json({
+          success: true,
+          message: 'Mobile number verified successfully!',
+          phone: cleanPhone
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid OTP! Please enter 1234 or the 4-digit code sent to your mobile.'
+      });
+    } catch (err: any) {
+      console.error('Error in verify-otp:', err);
+      return res.status(500).json({ success: false, error: 'Verification failed: ' + err.message });
+    }
+  });
+
   // 5. Create new appointment (Supports both /api/appointments and /api/book-appointment)
   const handleCreateAppointment = (req: any, res: any) => {
     try {

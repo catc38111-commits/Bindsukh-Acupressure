@@ -238,7 +238,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-        {/* Chip 5: मेरी रसीद / पर्चा (My Slip) */}
+        {/* Chip 5: मेरी प्रोफ़ाइल व पर्चा (My Profile & History) */}
         <button
           type="button"
           onClick={() => {
@@ -252,7 +252,7 @@ export const Header: React.FC<HeaderProps> = ({
           }`}
         >
           <UserCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-          <span>{t('slip')}</span>
+          <span>{language === 'en' ? 'My Profile' : language === 'hinglish' ? 'My Profile' : 'मेरी प्रोफ़ाइल (Profile)'}</span>
         </button>
 
         {/* Chip 6: थैरेपी व उपचार (Therapies) */}

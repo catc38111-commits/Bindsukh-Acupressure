@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import { CLINIC_INFO, SERVICES_OFFERED, CONDITIONS_TREATED } from '../data/clinicData';
-import { PatientAppointment, SlotAvailability, PatientHistoryCheck } from '../types';
+import { PatientAppointment, SlotAvailability, PatientHistoryCheck, PatientProfile } from '../types';
 import { UpiPaymentModal } from './UpiPaymentModal';
+import { OtpVerificationModal } from './OtpVerificationModal';
 import { saveAppointmentToFirestore } from '../utils/firebase';
 import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
 import { useLanguage } from '../context/LanguageContext';
@@ -165,11 +166,77 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
     }
   };
 
-  // UPI Modal state
+  // OTP & UPI Modal state
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
   const [isUpiModalOpen, setIsUpiModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'error' | 'success' | 'warning' } | null>(null);
+
+  const [profileAutoFilled, setProfileAutoFilled] = useState(false);
+
+  // Auto-prefill Name & Phone from localStorage (bindsukh_patient_profile)
+  useEffect(() => {
+    const autoPrefillFromProfile = () => {
+      try {
+        const stored = localStorage.getItem('bindsukh_patient_profile');
+        if (stored) {
+          const profile: PatientProfile = JSON.parse(stored);
+          let prefilled = false;
+          if (profile && profile.name) {
+            setName((prev) => {
+              if (!prev || prev.trim() === '') {
+                prefilled = true;
+                return profile.name;
+              }
+              return prev;
+            });
+          }
+          if (profile && profile.phone) {
+            setPhone((prev) => {
+              if (!prev || prev.trim() === '') {
+                prefilled = true;
+                return profile.phone;
+              }
+              return prev;
+            });
+          }
+          if (profile && profile.defaultCondition) {
+            setSelectedCondition((prev) => {
+              if (!prev || prev === CONDITIONS_TREATED[0].name) {
+                return profile.defaultCondition || prev;
+              }
+              return prev;
+            });
+          }
+          if (profile && profile.notes) {
+            setNotes((prev) => {
+              if (!prev || prev.trim() === '') {
+                return profile.notes || prev;
+              }
+              return prev;
+            });
+          }
+          if (prefilled) {
+            setProfileAutoFilled(true);
+          }
+        }
+      } catch (err) {
+        console.warn('Error reading patient profile for pre-fill:', err);
+      }
+    };
+
+    autoPrefillFromProfile();
+
+    const handleProfileUpdate = () => {
+      autoPrefillFromProfile();
+    };
+
+    window.addEventListener('bindsukh_patient_profile_updated', handleProfileUpdate);
+    return () => {
+      window.removeEventListener('bindsukh_patient_profile_updated', handleProfileUpdate);
+    };
+  }, []);
 
   const showToast = (text: string, type: 'error' | 'success' | 'warning' = 'error') => {
     setToastMessage({ text, type });
@@ -419,6 +486,19 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
       return;
     }
 
+    // Open OTP Verification Modal before final confirmation
+    setIsOtpModalOpen(true);
+  };
+
+  const handleOtpVerified = async () => {
+    setIsOtpModalOpen(false);
+    showToast(
+      language === 'hi'
+        ? 'मोबाइल नंबर सफलतापूर्वक सत्यापित हो गया!'
+        : 'Mobile number verified successfully!',
+      'success'
+    );
+
     // If UPI QR selected, open modal for payment verification; if Cash selected, submit directly
     if (paymentMethod === 'upi_qr') {
       setIsUpiModalOpen(true);
@@ -655,9 +735,17 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
 
         {/* Step 1: Patient Details */}
         <div className="space-y-4">
-          <div className="flex items-center gap-2 text-emerald-950 font-bold text-base border-b border-slate-200/80 pb-2">
-            <span className="w-6 h-6 rounded-full bg-emerald-900 text-amber-300 text-xs flex items-center justify-center font-bold">1</span>
-            <h3>{t('step1Title')}</h3>
+          <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+            <div className="flex items-center gap-2 text-emerald-950 font-bold text-base">
+              <span className="w-6 h-6 rounded-full bg-emerald-900 text-amber-300 text-xs flex items-center justify-center font-bold">1</span>
+              <h3>{t('step1Title')}</h3>
+            </div>
+            {profileAutoFilled && (
+              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                <span>{language === 'hi' ? 'प्रोफ़ाइल से स्वतः भरा गया' : 'Auto-filled from Profile'}</span>
+              </span>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1491,6 +1579,15 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
           </button>
         </div>
       </div>
+
+      {/* OTP Verification Modal */}
+      <OtpVerificationModal
+        isOpen={isOtpModalOpen}
+        onClose={() => setIsOtpModalOpen(false)}
+        phone={phone}
+        patientName={name}
+        onVerified={handleOtpVerified}
+      />
 
       {/* Live UPI QR Code Modal */}
       <UpiPaymentModal
