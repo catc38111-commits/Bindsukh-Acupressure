@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { PatientAppointment, PatientProfile } from '../types';
 import { CLINIC_INFO, CONDITIONS_TREATED, SERVICES_OFFERED } from '../data/clinicData';
 import { downloadCalendarIcsFile } from '../utils/calendarHelper';
-import { generateAppointmentReceiptPdf } from '../utils/receiptPdfHelper';
+import { generateAppointmentReceiptPdf, downloadReceiptAsImage } from '../utils/receiptPdfHelper';
+import { compressImageToBase64 } from '../utils/imageHelper';
 import { getAbsoluteApiUrl, safeParseJsonResponse } from '../utils/appUrlHelper';
 import { useLanguage } from '../context/LanguageContext';
 import {
@@ -28,7 +29,11 @@ import {
   Activity,
   ShieldCheck,
   RefreshCw,
-  ArrowRight
+  ArrowRight,
+  Camera,
+  Upload,
+  Trash2,
+  Image as ImageIcon
 } from 'lucide-react';
 
 interface PatientDashboardProps {
@@ -52,6 +57,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const [profileGender, setProfileGender] = useState<'male' | 'female' | 'other' | ''>('');
   const [profileDefaultCondition, setProfileDefaultCondition] = useState(CONDITIONS_TREATED[0].name);
   const [profileNotes, setProfileNotes] = useState('');
+  const [profilePhoto, setProfilePhoto] = useState<string>('');
 
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileSuccessMsg, setProfileSuccessMsg] = useState('');
@@ -64,7 +70,41 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const [searched, setSearched] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [downloadingPdfId, setDownloadingPdfId] = useState<string | null>(null);
+  const [downloadingImgId, setDownloadingImgId] = useState<string | null>(null);
   const [downloadedIcsId, setDownloadedIcsId] = useState<string | null>(null);
+
+  // Handle image upload & compression
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setProfileSuccessMsg('');
+    setProfileErrorMsg('');
+    try {
+      const compressedBase64 = await compressImageToBase64(file, 400, 400, 0.85);
+      setProfilePhoto(compressedBase64);
+      setProfileSuccessMsg(
+        language === 'hi'
+          ? 'फ़ोटो अपलोड हो गई! प्रोफ़ाइल सुरक्षित करने के लिए नीचे "Save Profile" दबाएं।'
+          : 'Photo uploaded! Click "Save Profile" below to confirm.'
+      );
+    } catch (err) {
+      console.error('Photo processing error:', err);
+      setProfileErrorMsg(
+        language === 'hi'
+          ? 'चित्र फ़ाइल लोड नहीं हो सकी। कृपया कोई अन्य फोटो चुनें।'
+          : 'Failed to process image. Please choose another photo.'
+      );
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setProfilePhoto('');
+    setProfileSuccessMsg(
+      language === 'hi'
+        ? 'फ़ोटो हटा दी गई है। परिवर्तन सुरक्षित करने के लिए "Save Profile" दबाएं।'
+        : 'Photo removed. Click "Save Profile" to save changes.'
+    );
+  };
 
   // 1. Initialize profile from localStorage or recent active booking on mount
   useEffect(() => {
@@ -82,6 +122,9 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
           if (storedProfile.gender) setProfileGender(storedProfile.gender);
           if (storedProfile.defaultCondition) setProfileDefaultCondition(storedProfile.defaultCondition);
           if (storedProfile.notes) setProfileNotes(storedProfile.notes);
+          if (storedProfile.patientPhoto || storedProfile.photoUrl) {
+            setProfilePhoto(storedProfile.patientPhoto || storedProfile.photoUrl || '');
+          }
 
           if (storedProfile.phone) {
             fetchPatientAppointments(storedProfile.phone);
@@ -100,6 +143,7 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
           setSearchPhone(cleanPhone);
           if (apt.patientName) setProfileName(apt.patientName);
           if (apt.condition) setProfileDefaultCondition(apt.condition);
+          if (apt.patientPhoto) setProfilePhoto(apt.patientPhoto);
           setAppointments([apt]);
           setSearched(true);
           fetchPatientAppointments(cleanPhone);
@@ -202,6 +246,8 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
       gender: profileGender || undefined,
       defaultCondition: profileDefaultCondition,
       notes: profileNotes.trim() || undefined,
+      patientPhoto: profilePhoto || undefined,
+      photoUrl: profilePhoto || undefined,
       updatedAt: new Date().toISOString()
     };
 
@@ -263,11 +309,22 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const handleDownloadPdf = async (apt: PatientAppointment) => {
     setDownloadingPdfId(apt.id);
     try {
-      await generateAppointmentReceiptPdf(apt, 'printable-slip-wrapper');
+      await generateAppointmentReceiptPdf(apt, `apt-card-${apt.id}`);
     } catch (err) {
       console.error('PDF download error:', err);
     } finally {
       setDownloadingPdfId(null);
+    }
+  };
+
+  const handleDownloadImage = async (apt: PatientAppointment) => {
+    setDownloadingImgId(apt.id);
+    try {
+      await downloadReceiptAsImage(apt, `apt-card-${apt.id}`);
+    } catch (err) {
+      console.error('Image download error:', err);
+    } finally {
+      setDownloadingImgId(null);
     }
   };
 
@@ -280,9 +337,9 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   return (
     <div id="patient-profile-dashboard-wrapper" className="space-y-6">
       {/* Top Banner */}
-      <div className="liquid-glass-dark text-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/20 relative overflow-hidden">
-        <div className="max-w-2xl relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-400/20 text-amber-300 rounded-full text-xs font-semibold mb-2 border border-amber-400/30">
+      <div className="liquid-glass-dark text-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/20 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="max-w-xl relative z-10 space-y-1">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-400/20 text-amber-300 rounded-full text-xs font-semibold mb-1 border border-amber-400/30">
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
             {language === 'hi'
               ? 'मरीज़ प्रोफ़ाइल व मेडिकल इतिहास'
@@ -291,44 +348,79 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
           <h2 className="text-2xl sm:text-3xl font-bold font-serif">
             {language === 'hi' ? 'मेरी प्रोफ़ाइल और अपॉइंटमेंट रिकॉर्ड' : 'My Profile & Appointments'}
           </h2>
-          <p className="text-xs sm:text-sm text-emerald-200 mt-1 leading-relaxed">
+          <p className="text-xs sm:text-sm text-emerald-200 leading-relaxed">
             {language === 'hi'
               ? 'यहाँ अपनी व्यक्तिगत जानकारी सुरक्षित रखें, अपनी अपॉइंटमेंट पर्चियाँ डाउनलोड करें और नया अपॉइंटमेंट बुक करते समय विवरण स्वतः भरें।'
               : 'Manage your patient details, view appointment history, and download digital prescription slips with 1-click auto-fill.'}
           </p>
+
+          {/* Dashboard Sub-Tabs Toggle */}
+          <div className="pt-4 flex items-center gap-3 border-t border-white/15 relative z-10">
+            <button
+              type="button"
+              onClick={() => setActiveDashboardTab('profile')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                activeSubTab === 'profile'
+                  ? 'bg-amber-400 text-emerald-950 shadow-md font-extrabold'
+                  : 'bg-white/10 text-white hover:bg-white/20'
+              }`}
+            >
+              <User className="w-4 h-4" />
+              <span>{language === 'hi' ? 'मेरी प्रोफ़ाइल (My Profile)' : 'My Profile'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveDashboardTab('history')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                activeSubTab === 'history'
+                  ? 'bg-amber-400 text-emerald-950 shadow-md font-extrabold'
+                  : 'bg-white/10 text-white hover:bg-white/20'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>
+                {language === 'hi'
+                  ? `अपॉइंटमेंट इतिहास (${appointments.length})`
+                  : `Appointment History (${appointments.length})`}
+              </span>
+            </button>
+          </div>
         </div>
 
-        {/* Dashboard Sub-Tabs Toggle */}
-        <div className="mt-6 flex items-center gap-3 border-t border-white/15 pt-4 relative z-10">
-          <button
-            type="button"
-            onClick={() => setActiveDashboardTab('profile')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              activeSubTab === 'profile'
-                ? 'bg-amber-400 text-emerald-950 shadow-md font-extrabold'
-                : 'bg-white/10 text-white hover:bg-white/20'
-            }`}
-          >
-            <User className="w-4 h-4" />
-            <span>{language === 'hi' ? 'मेरी प्रोफ़ाइल (My Profile)' : 'My Profile'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveDashboardTab('history')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              activeSubTab === 'history'
-                ? 'bg-amber-400 text-emerald-950 shadow-md font-extrabold'
-                : 'bg-white/10 text-white hover:bg-white/20'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            <span>
-              {language === 'hi'
-                ? `अपॉइंटमेंट इतिहास (${appointments.length})`
-                : `Appointment History (${appointments.length})`}
-            </span>
-          </button>
+        {/* Top-Right Patient Photo Avatar Spot */}
+        <div className="relative z-10 flex flex-col items-center justify-center shrink-0 self-start md:self-center bg-white/10 p-3 rounded-2xl border border-white/20 backdrop-blur-md">
+          <div className="relative group">
+            {profilePhoto ? (
+              <img
+                src={profilePhoto}
+                alt={profileName || 'Patient Photo'}
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-amber-300 shadow-lg ring-4 ring-emerald-950/40"
+              />
+            ) : (
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-emerald-800 border-2 border-amber-300 flex items-center justify-center text-amber-300 shadow-lg font-bold font-serif text-xl">
+                {profileName ? profileName.trim().charAt(0).toUpperCase() : <User className="w-8 h-8 text-amber-300" />}
+              </div>
+            )}
+            <label
+              htmlFor="top-banner-photo-input"
+              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-amber-400 text-emerald-950 flex items-center justify-center shadow-md cursor-pointer hover:bg-amber-300 transition-transform active:scale-95"
+              title="Upload / Change Photo"
+            >
+              <Camera className="w-4 h-4 stroke-[2.5]" />
+              <input
+                id="top-banner-photo-input"
+                type="file"
+                accept="image/*"
+                capture="user"
+                onChange={handlePhotoUpload}
+                className="hidden"
+              />
+            </label>
+          </div>
+          <span className="text-[11px] font-bold text-amber-300 mt-1.5 truncate max-w-[120px] text-center">
+            {profileName || (language === 'hi' ? 'मरीज़ फोटो' : 'Patient Photo')}
+          </span>
         </div>
       </div>
 
@@ -386,7 +478,83 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
           )}
 
           {/* Profile Form */}
-          <form onSubmit={handleSaveProfile} className="space-y-5">
+          <form onSubmit={handleSaveProfile} className="space-y-6">
+            {/* 1. Circular Avatar Photo Upload Placeholder */}
+            <div className="bg-gradient-to-r from-emerald-50/70 via-slate-50 to-emerald-50/70 p-5 rounded-2xl border border-slate-200/80 flex flex-col sm:flex-row items-center gap-5 shadow-xs">
+              <div className="relative group shrink-0">
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-4 border-white shadow-xl ring-4 ring-emerald-700/20 bg-emerald-900 flex items-center justify-center text-amber-300">
+                  {profilePhoto ? (
+                    <img
+                      src={profilePhoto}
+                      alt={profileName || 'Patient Photo'}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-amber-300">
+                      {profileName ? (
+                        <span className="text-3xl font-extrabold font-serif">
+                          {profileName.trim().charAt(0).toUpperCase()}
+                        </span>
+                      ) : (
+                        <User className="w-12 h-12 stroke-[1.8]" />
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <label
+                  htmlFor="profile-photo-upload-input"
+                  className="absolute bottom-0 right-0 w-9 h-9 rounded-full bg-amber-400 hover:bg-amber-300 text-emerald-950 flex items-center justify-center shadow-lg border-2 border-white cursor-pointer transition-transform active:scale-95"
+                  title="Upload Photo / कैमरा से फोटो लें"
+                >
+                  <Camera className="w-5 h-5 stroke-[2.5]" />
+                  <input
+                    id="profile-photo-upload-input"
+                    type="file"
+                    accept="image/*"
+                    capture="user"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              <div className="space-y-2 text-center sm:text-left flex-1">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 flex items-center justify-center sm:justify-start gap-1.5">
+                    <Camera className="w-4 h-4 text-emerald-800" />
+                    <span>{language === 'hi' ? 'मरीज़ फोटो अपलोड करें (Patient Profile Photo)' : 'Patient Profile Photo'}</span>
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {language === 'hi'
+                      ? 'कैमरा से फोटो खींचें या गैलरी से चुनें। यह फोटो डॉक्टर कंसोल व पर्ची में दिखाई देगी।'
+                      : 'Take a photo or pick from gallery. Shown in Doctor Console & Booking records.'}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                  <label
+                    htmlFor="profile-photo-upload-input"
+                    className="px-3.5 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-amber-300" />
+                    <span>{profilePhoto ? (language === 'hi' ? 'फोटो बदलें' : 'Change Photo') : (language === 'hi' ? 'फोटो अपलोड करें' : 'Upload Photo')}</span>
+                  </label>
+
+                  {profilePhoto && (
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1 border border-rose-200 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                      <span>{language === 'hi' ? 'हटाएं' : 'Remove'}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Full Name */}
               <div>
@@ -734,6 +902,22 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                                 {downloadingPdfId === apt.id
                                   ? (language === 'hi' ? 'PDF बन रहा है...' : 'PDF...')
                                   : (language === 'hi' ? 'PDF डाउनलोड' : 'PDF Slip')}
+                              </span>
+                            </button>
+
+                            {/* 3. Download Image (Canvas Data URL for WebViews) */}
+                            <button
+                              type="button"
+                              disabled={downloadingImgId === apt.id}
+                              onClick={() => handleDownloadImage(apt)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-emerald-950 font-black text-xs rounded-xl transition-colors cursor-pointer disabled:opacity-50 shadow-2xs"
+                              title="Download token slip as image for Android WebViews"
+                            >
+                              <ImageIcon className="w-3.5 h-3.5 text-emerald-950 stroke-[2.5]" />
+                              <span>
+                                {downloadingImgId === apt.id
+                                  ? (language === 'hi' ? 'फोटो बन रहा है...' : 'Image...')
+                                  : (language === 'hi' ? 'फोटो डाउनलोड' : 'Save Image')}
                               </span>
                             </button>
 

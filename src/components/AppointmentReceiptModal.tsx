@@ -3,7 +3,13 @@ import { PatientAppointment } from '../types';
 import { CLINIC_INFO } from '../data/clinicData';
 import { useClinicLogo } from '../utils/logoHelper';
 import { downloadCalendarIcsFile, getGoogleCalendarUrl } from '../utils/calendarHelper';
-import { generateAndDownloadReceiptPdf, printReceiptSlip } from '../utils/receiptPdfHelper';
+import {
+  generateAndDownloadReceiptPdf,
+  downloadReceiptAsImage,
+  openPrintableReceiptWindow,
+  renderElementToCanvasImage,
+  printReceiptSlip
+} from '../utils/receiptPdfHelper';
 import {
   Calendar,
   CalendarCheck,
@@ -21,7 +27,8 @@ import {
   User,
   X,
   FileDown,
-  Loader2
+  Loader2,
+  Image
 } from 'lucide-react';
 
 interface AppointmentReceiptModalProps {
@@ -38,6 +45,7 @@ export const AppointmentReceiptModal: React.FC<AppointmentReceiptModalProps> = (
   const clinicLogo = useClinicLogo();
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isGeneratingImg, setIsGeneratingImg] = useState(false);
   const [calendarSuccess, setCalendarSuccess] = useState(false);
 
   if (!isOpen || !appointment) return null;
@@ -62,6 +70,18 @@ export const AppointmentReceiptModal: React.FC<AppointmentReceiptModalProps> = (
     }
   };
 
+  const handleDownloadImage = async () => {
+    if (!appointment) return;
+    try {
+      setIsGeneratingImg(true);
+      await downloadReceiptAsImage(appointment, 'printable-slip-wrapper');
+    } catch (err) {
+      console.error('Error downloading receipt image:', err);
+    } finally {
+      setIsGeneratingImg(false);
+    }
+  };
+
   const handleDownloadCalendar = () => {
     if (!appointment) return;
     const ok = downloadCalendarIcsFile(appointment);
@@ -71,12 +91,13 @@ export const AppointmentReceiptModal: React.FC<AppointmentReceiptModalProps> = (
     }
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
+    if (!appointment) return;
     try {
-      printReceiptSlip('printable-slip-wrapper');
+      const imgDataUrl = await renderElementToCanvasImage('printable-slip-wrapper');
+      openPrintableReceiptWindow(appointment, imgDataUrl || undefined);
     } catch (e) {
-      console.warn('print failed, falling back to PDF download:', e);
-      handleDownloadSlip();
+      printReceiptSlip('printable-slip-wrapper');
     }
   };
 
@@ -272,7 +293,7 @@ Doctor: ${CLINIC_INFO.leadPractitioner}`;
             type="button"
             disabled={isGeneratingPdf}
             onClick={handleDownloadSlip}
-            className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 py-2.5 px-3 bg-emerald-800 hover:bg-emerald-900 active:scale-95 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-75"
+            className="flex-1 min-w-[125px] inline-flex items-center justify-center gap-1.5 py-2.5 px-3 bg-emerald-800 hover:bg-emerald-900 active:scale-95 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-75"
             title="Download official PDF token receipt slip to device"
           >
             {isGeneratingPdf ? (
@@ -283,49 +304,55 @@ Doctor: ${CLINIC_INFO.leadPractitioner}`;
             ) : downloadSuccess ? (
               <>
                 <Check className="w-4 h-4 text-amber-300" />
-                <span>PDF Downloaded!</span>
+                <span>PDF Saved!</span>
               </>
             ) : (
               <>
                 <FileDown className="w-4 h-4 text-amber-300" />
-                <span>Download PDF Slip</span>
+                <span>Download PDF</span>
               </>
             )}
           </button>
+
+          {/* Direct Image Download Button for WebViews */}
           <button
-            id="download-calendar-ics-btn"
+            id="download-image-slip-btn"
             type="button"
-            onClick={handleDownloadCalendar}
-            className="flex-1 min-w-[100px] inline-flex items-center justify-center gap-1.5 py-2.5 px-3 bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
-            title="Download .ics calendar invite to sync with phone calendar"
+            disabled={isGeneratingImg}
+            onClick={handleDownloadImage}
+            className="flex-1 min-w-[120px] inline-flex items-center justify-center gap-1.5 py-2.5 px-3 bg-amber-500 hover:bg-amber-600 active:scale-95 text-emerald-950 font-black rounded-xl text-xs transition-all shadow-xs cursor-pointer disabled:opacity-75"
+            title="Download receipt card as PNG image for Android WebViews"
           >
-            {calendarSuccess ? (
+            {isGeneratingImg ? (
               <>
-                <CalendarCheck className="w-4 h-4 text-emerald-950" />
-                <span>.ics Saved!</span>
+                <Loader2 className="w-4 h-4 text-emerald-950 animate-spin" />
+                <span>Creating Image...</span>
               </>
             ) : (
               <>
-                <CalendarPlus className="w-4 h-4 text-slate-950" />
-                <span>कैलेंडर (.ics)</span>
+                <Image className="w-4 h-4 text-emerald-950 stroke-[2.5]" />
+                <span>Save Image (फोटो पर्चा)</span>
               </>
             )}
           </button>
-          <button
-            id="share-whatsapp-btn"
-            type="button"
-            onClick={handleShareWhatsApp}
-            className="flex-1 min-w-[85px] inline-flex items-center justify-center gap-1.5 py-2.5 px-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-semibold transition-colors"
-          >
-            <Share2 className="w-4 h-4" /> Share
-          </button>
+
           <button
             id="print-receipt-btn"
             type="button"
             onClick={handlePrint}
-            className="flex-1 min-w-[85px] inline-flex items-center justify-center gap-1.5 py-2.5 px-3 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold transition-colors"
+            className="flex-1 min-w-[90px] inline-flex items-center justify-center gap-1.5 py-2.5 px-3 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+            title="Open clean printable receipt view or print dialog"
           >
-            <Printer className="w-4 h-4" /> Print
+            <Printer className="w-4 h-4 text-amber-300" /> Print / View
+          </button>
+
+          <button
+            id="share-whatsapp-btn"
+            type="button"
+            onClick={handleShareWhatsApp}
+            className="flex-1 min-w-[80px] inline-flex items-center justify-center gap-1.5 py-2.5 px-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+          >
+            <Share2 className="w-3.5 h-3.5" /> Share
           </button>
         </div>
       </div>

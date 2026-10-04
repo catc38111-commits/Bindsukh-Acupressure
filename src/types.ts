@@ -10,6 +10,7 @@ export interface PatientAppointment {
   tokenNumber: string;
   patientName: string;
   patientPhone: string;
+  patientPhoto?: string; // Base64 data URL for patient photo
   appointmentDate: string; // YYYY-MM-DD
   timeSlot: string; // e.g. "09:30 AM - 10:30 AM"
   therapy: string;
@@ -75,6 +76,8 @@ export interface PatientProfile {
   gender?: 'male' | 'female' | 'other' | '';
   defaultCondition?: string;
   notes?: string;
+  patientPhoto?: string;
+  photoUrl?: string;
   updatedAt?: string;
 }
 

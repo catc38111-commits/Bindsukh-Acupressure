@@ -10,6 +10,7 @@ interface PatientAppointment {
   tokenNumber: string;
   patientName: string;
   patientPhone: string;
+  patientPhoto?: string;
   appointmentDate: string; // YYYY-MM-DD
   timeSlot: string;
   therapy: string;
@@ -1277,6 +1278,7 @@ ${CLINIC_BOOKING_FOOTER}`;
       const {
         patientName,
         patientPhone,
+        patientPhoto,
         appointmentDate,
         timeSlot,
         therapy,
@@ -1351,6 +1353,7 @@ ${CLINIC_BOOKING_FOOTER}`;
         tokenNumber,
         patientName: patientName.trim(),
         patientPhone: cleanPhone,
+        patientPhoto: patientPhoto && typeof patientPhoto === 'string' ? patientPhoto : undefined,
         appointmentDate,
         timeSlot,
         therapy,

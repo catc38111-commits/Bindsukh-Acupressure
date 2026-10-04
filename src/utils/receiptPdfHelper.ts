@@ -115,48 +115,63 @@ async function deliverPdfSafely(
 }
 
 /**
- * Opens a clean, styled printable pop-up window formatted for A4 printing and saving as PDF.
+ * Opens a clean, styled printable pop-up window or full-screen iframe fallback
+ * formatted for A4 printing and saving as PDF or downloading as Image.
  */
-function openPrintableReceiptWindow(
+export function openPrintableReceiptWindow(
   appointment: PatientAppointment,
   canvasImgData?: string,
   pdfBase64?: string
 ): void {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) return;
-
   const htmlContent = `
     <!DOCTYPE html>
     <html lang="en">
     <head>
       <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
       <title>Bindsukh Receipt - ${appointment.tokenNumber}</title>
       <style>
-        @page { size: A4 portrait; margin: 10mm; }
+        @page { size: A4 portrait; margin: 5mm; }
+        * { box-sizing: border-box; }
         body {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-          background-color: #f8fafc;
+          background-color: #0f172a;
+          color: #f8fafc;
           margin: 0;
-          padding: 16px;
+          padding: 12px;
           display: flex;
           flex-direction: column;
           align-items: center;
-          color: #0f172a;
+          min-height: 100vh;
+        }
+        .header-bar {
+          width: 100%;
+          max-width: 480px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 8px 0 12px 0;
+        }
+        .header-title {
+          font-size: 15px;
+          font-weight: 800;
+          color: #fbbf24;
         }
         .actions-bar {
           width: 100%;
           max-width: 480px;
-          margin-bottom: 16px;
+          margin-bottom: 14px;
           display: flex;
+          flex-wrap: wrap;
           gap: 8px;
         }
         .btn {
           flex: 1;
-          padding: 12px 16px;
+          min-width: 110px;
+          padding: 11px 14px;
           border-radius: 12px;
-          font-weight: bold;
-          font-size: 14px;
+          font-weight: 800;
+          font-size: 13px;
           cursor: pointer;
           border: none;
           text-align: center;
@@ -164,17 +179,20 @@ function openPrintableReceiptWindow(
           display: inline-flex;
           align-items: center;
           justify-content: center;
+          gap: 6px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.25);
         }
-        .btn-primary { background-color: #064e3b; color: #ffffff; }
-        .btn-secondary { background-color: #f59e0b; color: #022c22; }
+        .btn-print { background-color: #059669; color: #ffffff; }
+        .btn-img { background-color: #d97706; color: #ffffff; }
+        .btn-close { background-color: #334155; color: #f8fafc; }
         .receipt-card {
           width: 100%;
           max-width: 480px;
           background: #ffffff;
           border-radius: 16px;
-          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-          border: 1px solid #e2e8f0;
+          box-shadow: 0 20px 35px rgba(0, 0, 0, 0.4);
           overflow: hidden;
+          color: #0f172a;
         }
         .receipt-img {
           width: 100%;
@@ -183,34 +201,39 @@ function openPrintableReceiptWindow(
         }
         @media print {
           body { background: #ffffff; padding: 0; }
-          .actions-bar { display: none !important; }
-          .receipt-card { box-shadow: none; border: none; max-width: 100%; }
+          .header-bar, .actions-bar { display: none !important; }
+          .receipt-card { box-shadow: none; border: none; max-width: 100%; width: 100%; }
         }
       </style>
     </head>
     <body>
+      <div class="header-bar">
+        <div class="header-title">Bindsukh Token Receipt</div>
+        <div style="font-size:12px; font-weight:bold; color:#f59e0b;">${appointment.tokenNumber}</div>
+      </div>
       <div class="actions-bar">
-        <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save as PDF</button>
+        <button class="btn btn-print" onclick="window.print()">🖨️ Print / Save PDF</button>
         ${
-          pdfBase64
-            ? `<a class="btn btn-secondary" href="${pdfBase64}" download="bindsukh_receipt_${appointment.tokenNumber}.pdf">📥 Download File</a>`
+          canvasImgData
+            ? `<a class="btn btn-img" href="${canvasImgData}" download="bindsukh_receipt_${appointment.tokenNumber}.png">🖼️ Save Image</a>`
             : ''
         }
+        <button class="btn btn-close" onclick="try{window.close();}catch(e){if(parent&&parent.document){var f=parent.document.getElementById('bindsukh-printable-iframe');if(f)f.remove();}}">❌ Close</button>
       </div>
       <div class="receipt-card">
         ${
           canvasImgData
-            ? `<img src="${canvasImgData}" class="receipt-img" alt="Appointment Receipt Slip" />`
+            ? `<img src="${canvasImgData}" class="receipt-img" alt="Appointment Receipt Slip ${appointment.tokenNumber}" />`
             : `
-            <div style="padding: 24px; text-align: center;">
-              <h2 style="margin: 0 0 8px 0; color: #064e3b;">${CLINIC_INFO.name}</h2>
-              <p style="margin: 0 0 16px 0; color: #d97706; font-size: 13px;">${CLINIC_INFO.taglineHindi}</p>
+            <div style="padding: 24px; text-align: center; color: #0f172a;">
+              <h2 style="margin: 0 0 4px 0; color: #064e3b; font-size: 18px;">${CLINIC_INFO.name}</h2>
+              <p style="margin: 0 0 16px 0; color: #d97706; font-size: 12px; font-weight: bold;">${CLINIC_INFO.taglineHindi}</p>
               <div style="background: #ecfdf5; border: 2px dashed #10b981; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
-                <div style="font-size: 12px; color: #047857; font-weight: bold;">OFFICIAL QUEUE TOKEN</div>
-                <div style="font-size: 28px; font-weight: 900; color: #064e3b; margin: 4px 0;">${appointment.tokenNumber}</div>
+                <div style="font-size: 11px; color: #047857; font-weight: bold; letter-spacing: 1px;">OFFICIAL QUEUE TOKEN</div>
+                <div style="font-size: 32px; font-weight: 900; color: #064e3b; margin: 4px 0; font-family: monospace;">${appointment.tokenNumber}</div>
               </div>
               <table style="width: 100%; text-align: left; font-size: 13px; border-collapse: collapse;">
-                <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; color: #64748b;">Patient Name:</td><td style="padding: 8px 0; font-weight: bold; text-align: right;">${appointment.patientName}</td></tr>
+                <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; color: #64748b;">Patient:</td><td style="padding: 8px 0; font-weight: bold; text-align: right;">${appointment.patientName}</td></tr>
                 <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; color: #64748b;">Phone:</td><td style="padding: 8px 0; font-family: monospace; text-align: right;">+91 ${appointment.patientPhone}</td></tr>
                 <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; color: #64748b;">Date:</td><td style="padding: 8px 0; font-weight: bold; color: #064e3b; text-align: right;">${appointment.appointmentDate}</td></tr>
                 <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; color: #64748b;">Time Slot:</td><td style="padding: 8px 0; font-weight: bold; color: #064e3b; text-align: right;">${appointment.timeSlot}</td></tr>
@@ -222,20 +245,154 @@ function openPrintableReceiptWindow(
         }
       </div>
       <script>
-        // Auto-prompt print dialog when opened in WebView
         window.addEventListener('load', function() {
           setTimeout(function() {
             try { window.print(); } catch(e) {}
-          }, 600);
+          }, 500);
         });
       </script>
     </body>
     </html>
   `;
 
-  printWindow.document.open();
-  printWindow.document.write(htmlContent);
-  printWindow.document.close();
+  try {
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.open();
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      return;
+    }
+  } catch (e) {
+    console.warn('Window open notice:', e);
+  }
+
+  // Fallback: If popup window was blocked in mobile WebView, create inline overlay iframe
+  const existingIframe = document.getElementById('bindsukh-printable-iframe');
+  if (existingIframe) {
+    document.body.removeChild(existingIframe);
+  }
+
+  const iframe = document.createElement('iframe');
+  iframe.id = 'bindsukh-printable-iframe';
+  iframe.style.position = 'fixed';
+  iframe.style.top = '0';
+  iframe.style.left = '0';
+  iframe.style.width = '100vw';
+  iframe.style.height = '100vh';
+  iframe.style.zIndex = '999999';
+  iframe.style.border = 'none';
+  iframe.style.backgroundColor = '#0f172a';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow?.document || iframe.contentDocument;
+  if (doc) {
+    doc.open();
+    doc.write(htmlContent);
+    doc.close();
+
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.print();
+      } catch (err) {
+        console.warn('Iframe print error:', err);
+      }
+    }, 500);
+  }
+}
+
+/**
+ * Captures any target receipt card element into a high-res canvas Data URL image.
+ */
+export async function renderElementToCanvasImage(
+  elementId: string = 'printable-slip-wrapper'
+): Promise<string | null> {
+  try {
+    const targetElement =
+      document.getElementById(elementId) ||
+      document.getElementById('printable-slip') ||
+      document.getElementById('receipt-modal-container') ||
+      document.querySelector('[id^="apt-card-"]');
+
+    if (!targetElement) return null;
+
+    const canvas = await html2canvas(targetElement as HTMLElement, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+    });
+
+    return canvas.toDataURL('image/png');
+  } catch (err) {
+    console.warn('html2canvas capture error:', err);
+    return null;
+  }
+}
+
+/**
+ * Renders and downloads the appointment token slip as a high-quality PNG image.
+ * Provides a foolproof fallback for Android WebViews where PDF blobs are restricted.
+ */
+export async function downloadReceiptAsImage(
+  appointment: PatientAppointment,
+  elementId: string = 'printable-slip-wrapper'
+): Promise<boolean> {
+  try {
+    const imgDataUrl = await renderElementToCanvasImage(elementId);
+    if (!imgDataUrl) {
+      openPrintableReceiptWindow(appointment);
+      return true;
+    }
+
+    const filename = `bindsukh_receipt_${appointment.tokenNumber}.png`;
+
+    // 1. Try Web Share API if supported
+    if (typeof navigator !== 'undefined' && navigator.canShare) {
+      try {
+        const res = await fetch(imgDataUrl);
+        const blob = await res.blob();
+        const imgFile = new File([blob], filename, { type: 'image/png' });
+
+        if (navigator.canShare({ files: [imgFile] })) {
+          await navigator.share({
+            files: [imgFile],
+            title: `Bindsukh Slip - ${appointment.tokenNumber}`,
+            text: `Appointment token slip for ${appointment.patientName} (Token: ${appointment.tokenNumber})`,
+          });
+          return true;
+        }
+      } catch (shareErr) {
+        // user cancelled share
+      }
+    }
+
+    // 2. Try anchor link download
+    const link = document.createElement('a');
+    link.href = imgDataUrl;
+    link.download = filename;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+
+    setTimeout(() => {
+      if (document.body.contains(link)) {
+        document.body.removeChild(link);
+      }
+    }, 10000);
+
+    // 3. In mobile browsers or WebViews, also trigger printable window as backup
+    if (isMobileOrWebView()) {
+      openPrintableReceiptWindow(appointment, imgDataUrl);
+    }
+
+    return true;
+  } catch (err) {
+    console.error('Failed to generate image receipt:', err);
+    openPrintableReceiptWindow(appointment);
+    return false;
+  }
 }
 
 /**

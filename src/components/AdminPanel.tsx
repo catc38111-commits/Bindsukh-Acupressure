@@ -38,7 +38,8 @@ import {
   Database,
   Cloud,
   Mic,
-  MicOff
+  MicOff,
+  Camera
 } from 'lucide-react';
 import { OwnershipDeployModal } from './OwnershipDeployModal';
 import { UploadLogoModal } from './UploadLogoModal';
@@ -47,6 +48,7 @@ import { useClinicLogo } from '../utils/logoHelper';
 import { subscribeToAppointments, saveAppointmentToFirestore, testFirestoreConnection } from '../utils/firebase';
 import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
 import { getAbsoluteApiUrl, safeParseJsonResponse } from '../utils/appUrlHelper';
+import { compressImageToBase64 } from '../utils/imageHelper';
 
 interface AdminPanelProps {
   onSelectReceipt: (apt: PatientAppointment) => void;
@@ -102,7 +104,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
   const [walkInPhone, setWalkInPhone] = useState('');
   const [walkInSlot, setWalkInSlot] = useState('');
   const [walkInTherapy, setWalkInTherapy] = useState('Acupressure Therapy');
+  const [walkInPhoto, setWalkInPhoto] = useState('');
   const [walkInError, setWalkInError] = useState('');
+
+  // Preview Patient Photo Modal state
+  const [previewPatientPhoto, setPreviewPatientPhoto] = useState<{
+    photoUrl: string;
+    name: string;
+    token: string;
+    phone: string;
+    date: string;
+    slot: string;
+  } | null>(null);
 
   // Reset to clean fresh roster modal state
   const [showResetModal, setShowResetModal] = useState(false);
@@ -836,6 +849,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
         body: JSON.stringify({
           patientName: walkInName.trim(),
           patientPhone: walkInPhone.replace(/\D/g, '').slice(-10),
+          patientPhoto: walkInPhoto || undefined,
           appointmentDate: selectedDate,
           timeSlot: walkInSlot,
           therapy: walkInTherapy,
@@ -860,6 +874,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
       setWalkInName('');
       setWalkInPhone('');
       setWalkInSlot('');
+      setWalkInPhoto('');
       fetchAppointments();
     } catch (err: any) {
       setWalkInError(err.message || 'Error adding walk-in.');
@@ -1276,17 +1291,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
                       >
                         {/* Patient Core Info */}
                         <div className="flex items-start gap-3.5">
-                          <div
-                            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-mono text-xs font-bold ${
-                              isCompleted
-                                ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                                : isInProgress
-                                ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                                : 'bg-slate-100 text-slate-700'
-                            }`}
-                          >
-                            {patient.tokenNumber.split('-').pop() || 'PT'}
-                          </div>
+                          {patient.patientPhoto ? (
+                            <div
+                              className="relative shrink-0 cursor-pointer group"
+                              onClick={() =>
+                                setPreviewPatientPhoto({
+                                  photoUrl: patient.patientPhoto!,
+                                  name: patient.patientName,
+                                  token: patient.tokenNumber,
+                                  phone: patient.patientPhone,
+                                  date: patient.appointmentDate,
+                                  slot: patient.timeSlot
+                                })
+                              }
+                              title="Click to view patient photo (बड़ा फोटो देखें)"
+                            >
+                              <img
+                                src={patient.patientPhoto}
+                                alt={patient.patientName}
+                                className="w-12 h-12 rounded-xl object-cover border-2 border-emerald-600 shadow-sm group-hover:scale-105 transition-transform"
+                              />
+                              <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-800 text-amber-300 rounded-full flex items-center justify-center text-[8px] font-bold border border-white">
+                                <Camera className="w-2.5 h-2.5 stroke-[2.5]" />
+                              </span>
+                            </div>
+                          ) : (
+                            <div
+                              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-mono text-xs font-bold ${
+                                isCompleted
+                                  ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                                  : isInProgress
+                                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                  : 'bg-slate-100 text-slate-700'
+                              }`}
+                            >
+                              {patient.tokenNumber.split('-').pop() || 'PT'}
+                            </div>
+                          )}
 
                           <div className="space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
@@ -1580,6 +1621,62 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
                   <option value="Kinesiology Tape">Kinesiology Tape</option>
                   <option value="Acupressure Massage Therapy">Acupressure Massage Therapy</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Patient Photo (Optional / फोटो)</label>
+                <div className="flex items-center gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                  {walkInPhoto ? (
+                    <img
+                      src={walkInPhoto}
+                      alt="Walk-in Patient"
+                      className="w-10 h-10 rounded-full object-cover border-2 border-emerald-600 shrink-0"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center justify-center shrink-0">
+                      <Camera className="w-5 h-5 text-emerald-800" />
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 flex-1">
+                    <label
+                      htmlFor="walkin-photo-input"
+                      className="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-amber-300" />
+                      <span>{walkInPhoto ? 'Change Photo' : 'Capture / Pick Photo'}</span>
+                      <input
+                        id="walkin-photo-input"
+                        type="file"
+                        accept="image/*"
+                        capture="user"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            try {
+                              const b64 = await compressImageToBase64(file, 400, 400, 0.85);
+                              setWalkInPhoto(b64);
+                            } catch (err) {
+                              console.error('Error in walk-in photo:', err);
+                            }
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {walkInPhoto && (
+                      <button
+                        type="button"
+                        onClick={() => setWalkInPhoto('')}
+                        className="p-1 text-rose-600 hover:bg-rose-100 rounded-md transition-colors"
+                        title="Remove Photo"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div className="pt-3 flex justify-end gap-2 border-t">
@@ -2006,6 +2103,54 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
         isOpen={showPublicQrModal}
         onClose={() => setShowPublicQrModal(false)}
       />
+
+      {/* Patient High-Res Photo View Modal */}
+      {previewPatientPhoto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-sm w-full shadow-2xl overflow-hidden border border-white/40 my-auto animate-in zoom-in-95 duration-200">
+            <div className="bg-gradient-to-r from-slate-900 to-emerald-950 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Camera className="w-4 h-4 text-amber-300" />
+                <span className="font-bold text-sm font-serif">{previewPatientPhoto.name}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewPatientPhoto(null)}
+                className="text-slate-300 hover:text-white bg-white/10 p-1.5 rounded-full transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 flex flex-col items-center space-y-4">
+              <div className="w-48 h-48 sm:w-56 sm:h-56 rounded-2xl overflow-hidden border-4 border-emerald-600 shadow-xl bg-slate-100">
+                <img
+                  src={previewPatientPhoto.photoUrl}
+                  alt={previewPatientPhoto.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+
+              <div className="w-full bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-1 text-center text-xs">
+                <div className="font-bold text-slate-900 text-sm">{previewPatientPhoto.name}</div>
+                <div className="font-mono text-emerald-800 font-bold">Token: {previewPatientPhoto.token}</div>
+                <div className="text-slate-600">Mobile: +91 {previewPatientPhoto.phone}</div>
+                <div className="text-slate-500 text-[11px] pt-1">
+                  Scheduled Date: {previewPatientPhoto.date} ({previewPatientPhoto.slot})
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPreviewPatientPhoto(null)}
+                className="w-full py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold rounded-xl shadow-md transition-all active:scale-95"
+              >
+                Close Preview / बंद करें
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

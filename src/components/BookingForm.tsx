@@ -9,6 +9,7 @@ import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
 import { useLanguage } from '../context/LanguageContext';
 import { copyToClipboard } from '../utils/clipboard';
 import { getAbsoluteApiUrl, safeParseJsonResponse } from '../utils/appUrlHelper';
+import { compressImageToBase64 } from '../utils/imageHelper';
 import {
   Calendar,
   Clock,
@@ -30,7 +31,10 @@ import {
   ArrowRight,
   Copy,
   Smartphone,
-  ExternalLink
+  ExternalLink,
+  Camera,
+  Upload,
+  Trash2
 } from 'lucide-react';
 
 interface BookingFormProps {
@@ -114,6 +118,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [patientPhoto, setPatientPhoto] = useState<string>('');
   const [date, setDate] = useState(todayStr());
   const [selectedSlot, setSelectedSlot] = useState<string>(() => {
     const fallback = generateFallbackSlots();
@@ -201,6 +206,9 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
               return prev;
             });
           }
+          if (profile && (profile.patientPhoto || profile.photoUrl)) {
+            setPatientPhoto((prev) => prev || profile.patientPhoto || profile.photoUrl || '');
+          }
           if (profile && profile.defaultCondition) {
             setSelectedCondition((prev) => {
               if (!prev || prev === CONDITIONS_TREATED[0].name) {
@@ -237,6 +245,24 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
       window.removeEventListener('bindsukh_patient_profile_updated', handleProfileUpdate);
     };
   }, []);
+
+  const handleBookingPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const compressedBase64 = await compressImageToBase64(file, 400, 400, 0.85);
+      setPatientPhoto(compressedBase64);
+      showToast(
+        language === 'hi'
+          ? 'मरीज़ की फोटो सफलतापूर्वक जोड़ दी गई!'
+          : 'Patient photo attached successfully!',
+        'success'
+      );
+    } catch (err) {
+      console.error('Error attaching photo:', err);
+      showToast('Failed to process image file.', 'error');
+    }
+  };
 
   const showToast = (text: string, type: 'error' | 'success' | 'warning' = 'error') => {
     setToastMessage({ text, type });
@@ -520,6 +546,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
       tokenNumber: localToken,
       patientName: name.trim(),
       patientPhone: cleanPhone,
+      patientPhoto: patientPhoto || undefined,
       appointmentDate: date,
       timeSlot: selectedSlot,
       therapy: selectedTherapy,
@@ -618,6 +645,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
         body: JSON.stringify({
           patientName: name.trim(),
           patientPhone: cleanPhone,
+          patientPhoto: patientPhoto || undefined,
           appointmentDate: date,
           timeSlot: selectedSlot,
           therapy: selectedTherapy,
@@ -880,6 +908,64 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
                     </>
                   )}
                 </div>
+              )}
+            </div>
+          </div>
+
+          {/* Patient Photo Attachment Card */}
+          <div className="bg-gradient-to-r from-slate-50 via-emerald-50/50 to-slate-50 p-3.5 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="relative shrink-0">
+                {patientPhoto ? (
+                  <img
+                    src={patientPhoto}
+                    alt="Attached Patient Photo"
+                    className="w-12 h-12 rounded-full object-cover border-2 border-emerald-600 shadow-md ring-2 ring-emerald-950/20"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-emerald-900 text-amber-300 border border-emerald-700 flex items-center justify-center font-bold font-serif text-lg shadow-sm">
+                    {name ? name.trim().charAt(0).toUpperCase() : <User className="w-6 h-6 text-amber-300" />}
+                  </div>
+                )}
+              </div>
+              <div className="text-center sm:text-left">
+                <span className="text-xs font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-1">
+                  <Camera className="w-3.5 h-3.5 text-emerald-800" />
+                  <span>{language === 'hi' ? 'मरीज़ फोटो (Doctor Console Photo)' : 'Patient Photo for Doctor Console'}</span>
+                </span>
+                <span className="text-[11px] text-slate-500 block">
+                  {patientPhoto
+                    ? (language === 'hi' ? '✓ फोटो सफलतापूर्वक संलग्न है' : '✓ Photo attached to booking')
+                    : (language === 'hi' ? 'वैकल्पिक: पर्ची व डॉक्टर कंसोल के लिए फोटो लगाएं' : 'Optional: Attach photo for Doctor Console')}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="booking-form-photo-input"
+                className="px-3.5 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+              >
+                <Upload className="w-3.5 h-3.5 text-amber-300" />
+                <span>{patientPhoto ? (language === 'hi' ? 'फोटो बदलें' : 'Change Photo') : (language === 'hi' ? 'फोटो लगाएं' : 'Attach Photo')}</span>
+                <input
+                  id="booking-form-photo-input"
+                  type="file"
+                  accept="image/*"
+                  capture="user"
+                  onChange={handleBookingPhotoUpload}
+                  className="hidden"
+                />
+              </label>
+              {patientPhoto && (
+                <button
+                  type="button"
+                  onClick={() => setPatientPhoto('')}
+                  className="p-1.5 text-rose-600 hover:bg-rose-100 rounded-xl transition-colors cursor-pointer"
+                  title="Remove Photo"
+                >
+                  <Trash2 className="w-4 h-4 text-rose-600" />
+                </button>
               )}
             </div>
           </div>
