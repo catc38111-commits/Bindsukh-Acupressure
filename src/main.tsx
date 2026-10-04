@@ -1,9 +1,9 @@
+import './index.css';
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LanguageProvider } from './context/LanguageContext';
-import './index.css';
 
 // Catch and suppress Vite HMR WebSocket connection errors gracefully in iframe environments
 if (typeof window !== 'undefined') {
@@ -59,4 +59,11 @@ createRoot(document.getElementById('root')!).render(
     </ErrorBoundary>
   </StrictMode>,
 );
+
+// Hide initial preloader smoothly once React mounts
+const preloader = document.getElementById('initial-preloader');
+if (preloader) {
+  preloader.style.opacity = '0';
+  setTimeout(() => preloader.remove(), 400);
+}
 

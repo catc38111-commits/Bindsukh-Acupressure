@@ -37,6 +37,7 @@ export const OtpVerificationModal: React.FC<OtpVerificationModalProps> = ({
   const [isTimerActive, setIsTimerActive] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
+  const [showDemoCode, setShowDemoCode] = useState<boolean>(false);
   const [notificationToast, setNotificationToast] = useState<{
     code: string;
     message: string;
@@ -52,9 +53,8 @@ export const OtpVerificationModal: React.FC<OtpVerificationModalProps> = ({
 
   const cleanPhone = phone.replace(/\D/g, '').slice(-10);
 
-  // Generate dynamic 4-digit random OTP and send top toast notification
+  // Generate dynamic 4-digit random OTP and send top toast notification (visible for 12s)
   const generateAndSendOtp = () => {
-    // Generate fresh random 4-digit number (1000 - 9999)
     const newCode = String(Math.floor(1000 + Math.random() * 9000));
     setGeneratedOtp(newCode);
     setOtp(['', '', '', '']);
@@ -63,18 +63,18 @@ export const OtpVerificationModal: React.FC<OtpVerificationModalProps> = ({
     setError('');
     setIsVerifying(false);
 
-    const smsText =
-      language === 'hi'
-        ? `सत्यापन कोड (Verification Code): ${newCode} (डा० बिंदसुख क्लीनिक)`
-        : language === 'hinglish'
-        ? `Verification Code: ${newCode} (Dr. Bindsukh Clinic)`
-        : `Verification Code Sent: ${newCode} for Dr. Bindsukh Clinic`;
+    const smsText = `💬 SMS Alert: Your verification code is ${newCode}`;
 
     setNotificationToast({
       code: newCode,
       message: smsText,
       visible: true
     });
+
+    // Auto hide toast after 12 seconds (12000ms)
+    setTimeout(() => {
+      setNotificationToast((prev) => (prev && prev.code === newCode ? { ...prev, visible: false } : prev));
+    }, 12000);
   };
 
   // Initialize modal state on open
@@ -196,7 +196,7 @@ export const OtpVerificationModal: React.FC<OtpVerificationModalProps> = ({
     <>
       {/* Floating Top Incoming SMS Notification Banner */}
       {notificationToast && notificationToast.visible && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9995] max-w-md w-[92%] sm:w-[420px] bg-slate-900/95 text-white rounded-2xl p-3.5 shadow-2xl border border-emerald-500/40 backdrop-blur-xl flex items-start gap-3 animate-in slide-in-from-top-6 duration-300">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[20000] max-w-md w-[92%] sm:w-[420px] bg-slate-900/95 text-white rounded-2xl p-3.5 shadow-2xl border border-emerald-500/40 backdrop-blur-xl flex items-start gap-3 animate-in slide-in-from-top-6 duration-300">
           <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
             <MessageSquare className="w-5 h-5 text-emerald-400" />
           </div>
@@ -209,7 +209,7 @@ export const OtpVerificationModal: React.FC<OtpVerificationModalProps> = ({
               <span className="text-[10px] text-slate-400 font-mono">Now</span>
             </div>
             <p className="mt-1 font-medium text-slate-200 text-xs leading-snug">
-              {notificationToast.message}
+              💬 SMS Alert: Your verification code is <strong className="text-emerald-400 font-mono text-sm font-black">{notificationToast.code}</strong>
             </p>
           </div>
           <button
@@ -329,6 +329,20 @@ export const OtpVerificationModal: React.FC<OtpVerificationModalProps> = ({
                   />
                 ))}
               </div>
+            </div>
+
+            {/* Fallback Code Helper */}
+            <div className="text-center pt-1">
+              <button
+                type="button"
+                onClick={() => setShowDemoCode(!showDemoCode)}
+                className="text-[11px] font-semibold text-emerald-800 hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200 inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+              >
+                <span>Demo Mode: Show code</span>
+                <span className="font-mono font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded text-xs">
+                  {showDemoCode ? generatedOtp : '•••• (Click)'}
+                </span>
+              </button>
             </div>
 
             {/* Resend & Timer Info */}
