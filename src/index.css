@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@variant dark (&:where(.dark, .dark *));
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,6 +8,7 @@
   html, body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     background-color: #f4f8f6;
+    color: #1e293b;
     touch-action: manipulation;
     -webkit-text-size-adjust: 100%;
     user-select: none;
@@ -15,6 +17,11 @@
     width: 100%;
     max-width: 100%;
     -webkit-touch-callout: none;
+  }
+
+  html.dark body, body.dark {
+    background-color: #0B1914 !important;
+    color: #F1F5F9 !important;
   }
 
   h1, h2, h3, .font-serif {

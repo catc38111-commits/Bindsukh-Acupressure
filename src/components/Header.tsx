@@ -70,9 +70,9 @@ export const Header: React.FC<HeaderProps> = ({
     : "Call Now";
 
   return (
-    <header className="w-full max-w-full bg-white shadow-sm border-b sticky top-0 z-50 no-print">
+    <header className="w-full max-w-full bg-white dark:bg-slate-900 shadow-sm border-b dark:border-slate-800 sticky top-0 z-50 no-print transition-colors duration-300">
       {/* 1. TOP ROW: Main Sticky Header */}
-      <div className="w-full px-3 py-2 flex items-center justify-between bg-white border-b gap-2">
+      <div className="w-full px-3 py-2 flex items-center justify-between bg-white dark:bg-slate-900 border-b dark:border-slate-800 gap-2">
         {/* Left Branding */}
         <button
           onClick={() => {
@@ -185,7 +185,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* 2. Category Filter Tabs (Horizontal Scroll Bar with touch swipe support) */}
       <div
-        className="w-full overflow-x-auto whitespace-nowrap flex items-center gap-2 px-2 py-2 bg-slate-50 border-b no-scrollbar"
+        className="w-full overflow-x-auto whitespace-nowrap flex items-center gap-2 px-2 py-2 bg-slate-50 dark:bg-slate-950 border-b dark:border-slate-800 no-scrollbar transition-colors duration-300"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {/* Chip 1: सभी (All Overview / Home) */}
@@ -198,7 +198,7 @@ export const Header: React.FC<HeaderProps> = ({
           className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 transition-all cursor-pointer ${
             activeTab === 'booking'
               ? 'bg-emerald-900 text-white font-bold shadow-xs'
-              : 'bg-white text-slate-700 hover:bg-slate-200/80 border border-slate-200'
+              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-200/80 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'
           }`}
         >
           {t('all')}
@@ -216,7 +216,7 @@ export const Header: React.FC<HeaderProps> = ({
               window.scrollTo({ top: 400, behavior: 'smooth' });
             }
           }}
-          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 transition-all bg-white text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 border border-slate-200 cursor-pointer"
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 transition-all bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-emerald-50 hover:text-emerald-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 cursor-pointer"
         >
           <Calendar className="w-3.5 h-3.5 text-amber-500 shrink-0" />
           <span>{t('bookSlot')}</span>
@@ -232,7 +232,7 @@ export const Header: React.FC<HeaderProps> = ({
           className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 transition-all cursor-pointer ${
             activeTab === 'photos'
               ? 'bg-emerald-900 text-white font-bold shadow-xs'
-              : 'bg-white text-slate-700 hover:bg-slate-200/80 border border-slate-200'
+              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-200/80 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'
           }`}
         >
           <Building2 className="w-3.5 h-3.5 text-amber-500 shrink-0" />
@@ -244,7 +244,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onOpenFeedbackModal}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 transition-all bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300/80 font-bold cursor-pointer"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 transition-all bg-amber-50 hover:bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300/80 font-bold cursor-pointer"
           >
             <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400 shrink-0" />
             <span>{t('feedback')}</span>
@@ -261,7 +261,7 @@ export const Header: React.FC<HeaderProps> = ({
           className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 transition-all cursor-pointer ${
             activeTab === 'dashboard'
               ? 'bg-emerald-900 text-white font-bold shadow-xs'
-              : 'bg-white text-slate-700 hover:bg-slate-200/80 border border-slate-200'
+              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-200/80 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'
           }`}
         >
           <UserCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
@@ -278,7 +278,7 @@ export const Header: React.FC<HeaderProps> = ({
           className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 transition-all cursor-pointer ${
             activeTab === 'services'
               ? 'bg-emerald-900 text-white font-bold shadow-xs'
-              : 'bg-white text-slate-700 hover:bg-slate-200/80 border border-slate-200'
+              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-200/80 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'
           }`}
         >
           <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
@@ -295,7 +295,7 @@ export const Header: React.FC<HeaderProps> = ({
           className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 transition-all cursor-pointer ${
             activeTab === 'doctor'
               ? 'bg-emerald-900 text-white font-bold shadow-xs'
-              : 'bg-white text-slate-700 hover:bg-slate-200/80 border border-slate-200'
+              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-200/80 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'
           }`}
         >
           <img
@@ -318,7 +318,7 @@ export const Header: React.FC<HeaderProps> = ({
               window.open('https://www.google.com/maps/dir/?api=1&destination=25.5028,81.6756', '_blank');
             }
           }}
-          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 transition-all bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold cursor-pointer"
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 transition-all bg-emerald-50 hover:bg-emerald-100 text-emerald-950 dark:bg-emerald-950/60 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold cursor-pointer"
         >
           <MapPin className="w-3.5 h-3.5 text-rose-600 shrink-0" />
           <span>{t('maps')}</span>
@@ -344,18 +344,18 @@ export const Header: React.FC<HeaderProps> = ({
             activeTab === 'admin'
               ? 'bg-amber-400 text-emerald-950 shadow-xs border border-amber-500'
               : isAdminUnlocked
-              ? 'bg-emerald-100 text-emerald-900 border border-emerald-300 hover:bg-emerald-200'
-              : 'bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300/80'
+              ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-200'
+              : 'bg-amber-50 hover:bg-amber-100 text-amber-950 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300/80'
           }`}
         >
           {isAdminUnlocked ? (
             <>
-              <Stethoscope className="w-3.5 h-3.5 text-emerald-900 shrink-0" />
+              <Stethoscope className="w-3.5 h-3.5 text-emerald-900 dark:text-emerald-300 shrink-0" />
               <span>{t('console')}</span>
             </>
           ) : (
             <>
-              <Lock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+              <Lock className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 shrink-0" />
               <span>{t('admin')}</span>
             </>
           )}
@@ -366,9 +366,9 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onOpenPhoneModal}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 transition-all bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 cursor-pointer"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 transition-all bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 cursor-pointer"
           >
-            <Smartphone className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <Smartphone className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
             <span>{t('phoneHelp')}</span>
           </button>
         )}
@@ -378,9 +378,9 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onOpenHelpShareModal}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 transition-all bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold cursor-pointer"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 transition-all bg-emerald-50 hover:bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold cursor-pointer"
           >
-            <Share2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+            <Share2 className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400 shrink-0" />
             <span>{t('helpShare')}</span>
           </button>
         )}

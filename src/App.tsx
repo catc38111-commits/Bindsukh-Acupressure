@@ -149,7 +149,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f7f5] flex flex-col selection:bg-emerald-200 selection:text-emerald-950 font-sans relative w-full max-w-full overflow-x-hidden">
+    <div className="min-h-screen bg-[#f3f7f5] text-slate-800 dark:bg-[#0B1914] dark:text-slate-100 flex flex-col selection:bg-emerald-200 selection:text-emerald-950 font-sans relative w-full max-w-full overflow-x-hidden transition-colors duration-300">
       {/* Liquid glass ambient background glow orbs - GPU safe for iOS WebKit */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
         <div className="absolute -top-[10%] -left-[10%] w-[55vw] h-[55vw] rounded-full bg-[radial-gradient(circle,rgba(52,211,153,0.14)_0%,transparent_70%)]" />
