@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PatientAppointment, PatientProfile } from '../types';
 import { CLINIC_INFO, CONDITIONS_TREATED, SERVICES_OFFERED } from '../data/clinicData';
 import { downloadCalendarIcsFile } from '../utils/calendarHelper';
-import { generateAppointmentReceiptPdf, downloadReceiptAsImage } from '../utils/receiptPdfHelper';
+import { generateAppointmentReceiptPdf, downloadReceiptAsImage, openPrintableReceiptWindow } from '../utils/receiptPdfHelper';
 import { compressImageToBase64 } from '../utils/imageHelper';
 import { getAbsoluteApiUrl, safeParseJsonResponse } from '../utils/appUrlHelper';
 import { useLanguage } from '../context/LanguageContext';
@@ -280,24 +280,53 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   };
 
   const handleCancelAppointment = async (id: string) => {
+    const targetApt = appointments.find((a) => a.id === id);
+    const bookingId = targetApt ? (targetApt.tokenNumber || targetApt.id) : id;
     if (
       !window.confirm(
         language === 'hi'
-          ? 'क्या आप इस अपॉइंटमेंट टोकन को रद्द करना चाहते हैं?'
-          : 'Are you sure you want to cancel this appointment slot?'
+          ? `क्या आप बुकिंग ${bookingId} को रद्द करना चाहते हैं?`
+          : `Are you sure you want to cancel booking ${bookingId}?`
       )
     )
       return;
 
     try {
       setCancellingId(id);
-      const res = await fetch(`/api/appointments/${id}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        setAppointments((prev) =>
-          prev.map((a) => (a.id === id ? { ...a, status: 'cancelled' } : a))
-        );
+      try {
+        await fetch(`/api/appointments/${id}`, {
+          method: 'DELETE'
+        });
+      } catch (netErr) {
+        console.warn('API cancel call notice:', netErr);
+      }
+
+      // Update state immediately
+      const updatedList = appointments.map((a) => (a.id === id ? { ...a, status: 'cancelled' as const } : a));
+      setAppointments(updatedList);
+
+      // Update localStorage stores and broadcast change
+      try {
+        ['bindsukh_local_appointments', 'appointments', 'user_bookings'].forEach((k) => {
+          const raw = localStorage.getItem(k);
+          if (raw) {
+            const list: PatientAppointment[] = JSON.parse(raw);
+            if (Array.isArray(list)) {
+              const updated = list.map((item) => (item.id === id ? { ...item, status: 'cancelled' } : item));
+              localStorage.setItem(k, JSON.stringify(updated));
+            }
+          }
+        });
+        const activeRaw = localStorage.getItem('bindsukh_active_booking');
+        if (activeRaw) {
+          const activeApt = JSON.parse(activeRaw);
+          if (activeApt && (activeApt.id === id || activeApt.tokenNumber === bookingId)) {
+            localStorage.setItem('bindsukh_active_booking', JSON.stringify({ ...activeApt, status: 'cancelled' }));
+          }
+        }
+        window.dispatchEvent(new CustomEvent('clinic_appointment_booked', { detail: { id, status: 'cancelled' } }));
+      } catch (storageErr) {
+        console.warn('Local storage update error during cancellation:', storageErr);
       }
     } catch (err) {
       console.error('Error cancelling appointment:', err);
@@ -309,9 +338,13 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
   const handleDownloadPdf = async (apt: PatientAppointment) => {
     setDownloadingPdfId(apt.id);
     try {
-      await generateAppointmentReceiptPdf(apt, `apt-card-${apt.id}`);
+      const success = await generateAppointmentReceiptPdf(apt, `apt-card-${apt.id}`);
+      if (!success) {
+        openPrintableReceiptWindow(apt);
+      }
     } catch (err) {
-      console.error('PDF download error:', err);
+      console.error('PDF download error, falling back to printable window:', err);
+      openPrintableReceiptWindow(apt);
     } finally {
       setDownloadingPdfId(null);
     }

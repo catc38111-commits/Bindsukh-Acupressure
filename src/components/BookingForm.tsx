@@ -3,7 +3,6 @@ import QRCode from 'qrcode';
 import { CLINIC_INFO, SERVICES_OFFERED, CONDITIONS_TREATED } from '../data/clinicData';
 import { PatientAppointment, SlotAvailability, PatientHistoryCheck, PatientProfile } from '../types';
 import { UpiPaymentModal } from './UpiPaymentModal';
-import { OtpVerificationModal } from './OtpVerificationModal';
 import { saveAppointmentToFirestore } from '../utils/firebase';
 import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
 import { useLanguage } from '../context/LanguageContext';
@@ -171,8 +170,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
     }
   };
 
-  // OTP & UPI Modal state
-  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
+  // UPI Modal state
   const [isUpiModalOpen, setIsUpiModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
@@ -512,20 +510,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
       return;
     }
 
-    // Open OTP Verification Modal before final confirmation
-    setIsOtpModalOpen(true);
-  };
-
-  const handleOtpVerified = async () => {
-    setIsOtpModalOpen(false);
-    showToast(
-      language === 'hi'
-        ? 'मोबाइल नंबर सफलतापूर्वक सत्यापित हो गया!'
-        : 'Mobile number verified successfully!',
-      'success'
-    );
-
-    // If UPI QR selected, open modal for payment verification; if Cash selected, submit directly
+    // Direct booking flow: if UPI QR selected, open UPI payment modal; if Pay at Clinic, submit directly
     if (paymentMethod === 'upi_qr') {
       setIsUpiModalOpen(true);
     } else {
@@ -1665,15 +1650,6 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
           </button>
         </div>
       </div>
-
-      {/* OTP Verification Modal */}
-      <OtpVerificationModal
-        isOpen={isOtpModalOpen}
-        onClose={() => setIsOtpModalOpen(false)}
-        phone={phone}
-        patientName={name}
-        onVerified={handleOtpVerified}
-      />
 
       {/* Live UPI QR Code Modal */}
       <UpiPaymentModal
