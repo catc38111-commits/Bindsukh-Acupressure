@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 import { copyToClipboard } from '../utils/clipboard';
 import { usePublicAppUrl } from '../utils/appUrlHelper';
 import {
@@ -26,6 +27,7 @@ export const PhoneCompatibilityModal: React.FC<PhoneCompatibilityModalProps> = (
   onOpenPublicModal,
   onOpenInstallModal
 }) => {
+  useLockBodyScroll(isOpen);
   const [copied, setCopied] = useState(false);
   const { publicAppUrl } = usePublicAppUrl();
 
@@ -44,7 +46,7 @@ export const PhoneCompatibilityModal: React.FC<PhoneCompatibilityModalProps> = (
   return (
     <div
       id="phone-compatibility-modal"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-200"
+      className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/75 backdrop-blur-md p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-200"
     >
       <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in zoom-in-95 duration-200 text-slate-800 text-xs">
         {/* 1. Header Section */}

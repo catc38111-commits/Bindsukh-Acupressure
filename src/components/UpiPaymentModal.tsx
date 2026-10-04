@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import { CLINIC_INFO } from '../data/clinicData';
 import { copyToClipboard } from '../utils/clipboard';
 import { CheckCircle2, Copy, ExternalLink, QrCode, ShieldCheck, X, Upload, Image, Sparkles, Smartphone } from 'lucide-react';
+import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 
 interface UpiPaymentModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export const UpiPaymentModal: React.FC<UpiPaymentModalProps> = ({
   onPaymentConfirmed,
   isSubmitting = false,
 }) => {
+  useLockBodyScroll(isOpen);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -101,10 +103,10 @@ export const UpiPaymentModal: React.FC<UpiPaymentModalProps> = ({
   };
 
   return (
-    <div id="upi-modal-overlay" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto">
+    <div id="upi-modal-overlay" className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto">
       {/* Instant Toast Notification Banner */}
       {toastMessage && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] bg-emerald-950 text-amber-300 font-extrabold px-5 py-2.5 rounded-full shadow-2xl border-2 border-amber-400 flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-200">
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[9995] bg-emerald-950 text-amber-300 font-extrabold px-5 py-2.5 rounded-full shadow-2xl border-2 border-amber-400 flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-200">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 stroke-[3]" />
           <span>{toastMessage}</span>
           <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />

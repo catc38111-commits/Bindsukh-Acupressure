@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { PatientAppointment } from '../types';
+import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 import { CLINIC_INFO } from '../data/clinicData';
 import { useClinicLogo } from '../utils/logoHelper';
 import { downloadCalendarIcsFile, getGoogleCalendarUrl } from '../utils/calendarHelper';
@@ -42,6 +43,7 @@ export const AppointmentReceiptModal: React.FC<AppointmentReceiptModalProps> = (
   isOpen,
   onClose,
 }) => {
+  useLockBodyScroll(isOpen);
   const clinicLogo = useClinicLogo();
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -116,7 +118,7 @@ Doctor: ${CLINIC_INFO.leadPractitioner}`;
   };
 
   return (
-    <div id="receipt-modal-overlay" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto no-print">
+    <div id="receipt-modal-overlay" className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto no-print">
       <div id="receipt-modal-container" className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-emerald-900/15 overflow-hidden my-6">
         
         {/* Printable Card Area Captured into High-Res PDF */}

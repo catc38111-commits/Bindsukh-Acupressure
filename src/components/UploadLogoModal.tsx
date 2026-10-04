@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 import { Upload, CheckCircle2, AlertCircle, Image as ImageIcon, X, Sparkles, RefreshCw, RotateCcw } from 'lucide-react';
 import { getStoredClinicLogo, setStoredClinicLogo } from '../utils/logoHelper';
 
@@ -52,6 +53,7 @@ export const UploadLogoModal: React.FC<UploadLogoModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  useLockBodyScroll(isOpen);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -154,7 +156,7 @@ export const UploadLogoModal: React.FC<UploadLogoModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 overflow-y-auto animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/75 backdrop-blur-md p-4 overflow-y-auto animate-in fade-in duration-200">
       <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-white/80 overflow-hidden my-auto animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-950 text-white p-5 sm:p-6 relative">

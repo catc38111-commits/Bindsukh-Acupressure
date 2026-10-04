@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 import {
   Rocket,
   ShieldCheck,
@@ -24,6 +25,7 @@ interface OwnershipDeployModalProps {
 }
 
 export const OwnershipDeployModal: React.FC<OwnershipDeployModalProps> = ({ isOpen, onClose }) => {
+  useLockBodyScroll(isOpen);
   const [activeSection, setActiveSection] = useState<'ownership' | 'publishing' | 'messaging' | 'custom_domain'>('ownership');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
@@ -36,7 +38,7 @@ export const OwnershipDeployModal: React.FC<OwnershipDeployModalProps> = ({ isOp
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-emerald-900/10 overflow-hidden my-8">
         {/* Modal Header */}
         <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-800 text-white p-6">

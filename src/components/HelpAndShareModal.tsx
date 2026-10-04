@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 import { usePublicAppUrl } from '../utils/appUrlHelper';
 import { copyToClipboard } from '../utils/clipboard';
 import { useClinicLogo } from '../utils/logoHelper';
@@ -24,6 +25,7 @@ export const HelpAndShareModal: React.FC<HelpAndShareModalProps> = ({
   onClose,
   onOpenEditUrl
 }) => {
+  useLockBodyScroll(isOpen);
   const { publicAppUrl } = usePublicAppUrl();
   const clinicLogo = useClinicLogo();
   const [copied, setCopied] = useState(false);
@@ -43,7 +45,7 @@ export const HelpAndShareModal: React.FC<HelpAndShareModalProps> = ({
   return (
     <div
       id="help-and-share-modal-overlay"
-      className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+      className="fixed inset-0 z-[9990] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
     >
       <div
         id="help-and-share-card"

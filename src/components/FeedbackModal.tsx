@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { CLINIC_INFO } from '../data/clinicData';
 import { PatientFeedback } from '../types';
+import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 
 interface FeedbackModalProps {
   isOpen: boolean;
@@ -48,6 +49,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
   onClose,
   onNavigateToBooking
 }) => {
+  useLockBodyScroll(isOpen);
   const [activeSubTab, setActiveSubTab] = useState<'write' | 'view'>('write');
   const [rating, setRating] = useState<number>(5);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
@@ -145,7 +147,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[9990] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div

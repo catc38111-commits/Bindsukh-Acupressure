@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { PatientAppointment } from '../types';
+import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 import { CLINIC_INFO, getSlotsForDate, normalizeTimeSlot } from '../data/clinicData';
 import {
   Calendar,
@@ -121,6 +122,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [firestoreConnected, setFirestoreConnected] = useState(true);
+
+  // Lock body scroll whenever any modal is active in AdminPanel
+  const hasAnyModalOpen = Boolean(
+    showOwnershipModal ||
+    showUploadLogoModal ||
+    showPublicQrModal ||
+    showExportModal ||
+    previewCsvModal ||
+    showSimulateReplyModal ||
+    showWalkInModal ||
+    previewPatientPhoto ||
+    showResetModal
+  );
+  useLockBodyScroll(hasAnyModalOpen);
 
   // Voice Search recognition for therapist
   const {
@@ -1451,6 +1466,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
                             </button>
                           )}
 
+                          {/* Send WhatsApp Reminder Button (Quick Send via WhatsApp Web) */}
+                          {!isCancelled && !isCompleted && (
+                            <a
+                              id={`whatsapp-reminder-btn-${patient.id}`}
+                              href={`https://wa.me/91${patient.patientPhone}?text=${encodeURIComponent(
+                                `Namaste ${patient.patientName}! 👋\n\nThis is a friendly reminder for your session at *Bindsukh Acu Center* (Puramufti Purani Bazar, Prayagraj).\n\n📅 Date: ${patient.appointmentDate}\n⏰ Time Slot: ${patient.timeSlot}\n🎫 Token: ${patient.tokenNumber}\n🩺 Therapy: ${patient.therapy}\n\nPlease reply *CONFIRM* or tap the link to confirm your attendance:\n${window.location.origin}/confirm/${patient.id}\n\nThank you!\nDr. Saurabh Prajapati`
+                              )}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-sm transition-all border border-emerald-500/40"
+                              title="Send WhatsApp Reminder with pre-written appointment time and patient name via WhatsApp Web"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5 text-emerald-100" />
+                              <span>Send WhatsApp Reminder</span>
+                            </a>
+                          )}
+
                           {/* Manual WhatsApp/SMS Reminder Dispatch */}
                           {!isCancelled && !isCompleted && (
                             <button
@@ -1458,10 +1490,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
                               disabled={isWorking}
                               onClick={() => handleSendReminderNow(patient.id, 'whatsapp')}
                               className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 text-xs font-semibold rounded-xl border border-blue-200 transition-colors"
-                              title="Dispatch 24h reminder notification now"
+                              title="Dispatch 24h reminder notification now via system backend"
                             >
                               <Send className="w-3 h-3 text-blue-600" />
-                              Send Reminder
+                              Auto Dispatch
                             </button>
                           )}
 
@@ -1549,7 +1581,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
 
       {/* Quick Walk-in Modal */}
       {showWalkInModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4">
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-bold text-slate-900 font-serif text-lg">Add Walk-In Patient</h3>
@@ -1701,7 +1733,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
 
       {/* Simulate Patient Reply Modal (SMS / WhatsApp Webhook Tester) */}
       {showSimulateReplyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-emerald-900/10 space-y-4">
             <div className="flex items-center justify-between border-b pb-3">
               <div className="flex items-center gap-2">
@@ -1804,7 +1836,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
 
       {/* Reset to Fresh Slate Confirmation Modal */}
       {showResetModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9990] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-rose-200 animate-in fade-in zoom-in duration-200">
             <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center mb-4">
               <RotateCcw className="w-6 h-6" />
@@ -1852,7 +1884,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
 
       {/* Offline Patient Records CSV Export Modal */}
       {showExportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-white/80 overflow-hidden my-auto animate-in zoom-in-95 duration-200">
             {/* Header */}
             <div className="bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-950 text-white p-5 sm:p-6 relative">
@@ -2040,7 +2072,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
 
       {/* Screen Preview CSV Modal */}
       {previewCsvModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-white/80 overflow-hidden my-auto animate-in zoom-in-95 duration-200">
             <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
               <div>
@@ -2106,7 +2138,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onSelectReceipt, onLogou
 
       {/* Patient High-Res Photo View Modal */}
       {previewPatientPhoto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl max-w-sm w-full shadow-2xl overflow-hidden border border-white/40 my-auto animate-in zoom-in-95 duration-200">
             <div className="bg-gradient-to-r from-slate-900 to-emerald-950 text-white p-4 flex items-center justify-between">
               <div className="flex items-center gap-2">

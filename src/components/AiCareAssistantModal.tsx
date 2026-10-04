@@ -3,6 +3,7 @@ import { CLINIC_INFO, CONDITIONS_TREATED, SERVICES_OFFERED } from '../data/clini
 import { useClinicLogo } from '../utils/logoHelper';
 import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
 import { useLanguage } from '../context/LanguageContext';
+import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 import {
   Bot,
   Calendar,
@@ -50,6 +51,7 @@ export const AiCareAssistantModal: React.FC<AiCareAssistantModalProps> = ({
   const clinicLogo = useClinicLogo();
   const { t, language } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
+  useLockBodyScroll(isOpen);
   const isHistoryPushedRef = useRef(false);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -976,7 +978,7 @@ ${clinicFooter}`;
       {/* Chatbot Modal / Drawer */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-6 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+          className="fixed inset-0 z-[9990] flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-6 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               handleCloseChat();

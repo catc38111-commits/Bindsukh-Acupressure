@@ -12,6 +12,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 
 interface OtpVerificationModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ export const OtpVerificationModal: React.FC<OtpVerificationModalProps> = ({
   onVerified
 }) => {
   const { language } = useLanguage();
+  useLockBodyScroll(isOpen);
   const [otp, setOtp] = useState<string[]>(['', '', '', '']);
   const [generatedOtp, setGeneratedOtp] = useState<string>('');
   const [timer, setTimer] = useState<number>(60);
@@ -194,7 +196,7 @@ export const OtpVerificationModal: React.FC<OtpVerificationModalProps> = ({
     <>
       {/* Floating Top Incoming SMS Notification Banner */}
       {notificationToast && notificationToast.visible && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] max-w-md w-[92%] sm:w-[420px] bg-slate-900/95 text-white rounded-2xl p-3.5 shadow-2xl border border-emerald-500/40 backdrop-blur-xl flex items-start gap-3 animate-in slide-in-from-top-6 duration-300">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9995] max-w-md w-[92%] sm:w-[420px] bg-slate-900/95 text-white rounded-2xl p-3.5 shadow-2xl border border-emerald-500/40 backdrop-blur-xl flex items-start gap-3 animate-in slide-in-from-top-6 duration-300">
           <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
             <MessageSquare className="w-5 h-5 text-emerald-400" />
           </div>
@@ -224,7 +226,7 @@ export const OtpVerificationModal: React.FC<OtpVerificationModalProps> = ({
       {/* Main Verification Modal Container */}
       <div
         id="otp-verification-modal"
-        className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200"
+        className="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200"
         onClick={(e) => {
           if (e.target === e.currentTarget) {
             onClose();

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 import { CLINIC_PHOTOS, GOOGLE_BUSINESS_INFO, ClinicPhoto } from '../data/clinicPhotosData';
 import { CLINIC_INFO } from '../data/clinicData';
 import { useLanguage } from '../context/LanguageContext';
@@ -26,6 +27,7 @@ interface ClinicOfficeGalleryProps {
 export const ClinicOfficeGallery: React.FC<ClinicOfficeGalleryProps> = ({ onBookClick }) => {
   const { language } = useLanguage();
   const [selectedPhoto, setSelectedPhoto] = useState<ClinicPhoto | null>(null);
+  useLockBodyScroll(Boolean(selectedPhoto));
   const [activeFilter, setActiveFilter] = useState<'all' | 'acupuncture_live' | 'doctor' | 'treatment_room' | 'therapy_bed' | 'office'>('all');
 
   const filteredPhotos = activeFilter === 'all'

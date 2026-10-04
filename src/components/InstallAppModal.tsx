@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { copyToClipboard } from '../utils/clipboard';
 import { useClinicLogo } from '../utils/logoHelper';
@@ -26,6 +27,7 @@ interface InstallAppModalProps {
 }
 
 export const InstallAppModal: React.FC<InstallAppModalProps> = ({ isOpen, onClose }) => {
+  useLockBodyScroll(isOpen);
   const { isInstallable, isInstalled, isIOS, triggerInstall } = usePWAInstall();
   const [copiedLink, setCopiedLink] = useState(false);
   const [activeTab, setActiveTab] = useState<'mobile' | 'apk' | 'desktop'>('mobile');
@@ -43,7 +45,7 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({ isOpen, onClos
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-emerald-900/15 overflow-hidden my-8 animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-800 text-white p-6 relative">

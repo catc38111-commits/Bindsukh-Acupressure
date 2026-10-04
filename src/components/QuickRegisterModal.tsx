@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 import {
   Calendar,
   CheckCircle2,
@@ -28,6 +29,7 @@ export const QuickRegisterModal: React.FC<QuickRegisterModalProps> = ({
   onClose,
   onRegistered
 }) => {
+  useLockBodyScroll(isOpen);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [therapy, setTherapy] = useState(SERVICES_OFFERED[0].name);
@@ -153,7 +155,7 @@ export const QuickRegisterModal: React.FC<QuickRegisterModalProps> = ({
   return (
     <div
       id="quick-register-modal"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-md p-4 overflow-y-auto animate-in fade-in duration-200"
+      className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/65 backdrop-blur-md p-4 overflow-y-auto animate-in fade-in duration-200"
     >
       <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-white/80 overflow-hidden my-auto animate-in zoom-in-95 duration-200">
         {/* Header */}

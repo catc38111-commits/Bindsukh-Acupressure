@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 import QRCode from 'qrcode';
 import { copyToClipboard } from '../utils/clipboard';
 import { useClinicLogo } from '../utils/logoHelper';
@@ -31,6 +32,7 @@ interface PublicShareModalProps {
 }
 
 export const PublicShareModal: React.FC<PublicShareModalProps> = ({ isOpen, onClose, onOpenPhoneGuide }) => {
+  useLockBodyScroll(isOpen);
   const clinicLogo = useClinicLogo();
   const { publicAppUrl, updateUrl, resetUrl, isCustom } = usePublicAppUrl();
 
@@ -153,7 +155,7 @@ export const PublicShareModal: React.FC<PublicShareModalProps> = ({ isOpen, onCl
   );
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[9990] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
       <div className="max-h-[90vh] overflow-y-auto rounded-2xl w-full max-w-md bg-white shadow-2xl my-auto animate-in zoom-in-95 duration-200 border border-slate-200 flex flex-col">
         {/* Header */}
         <div className="bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-950 text-white p-5 relative shrink-0">
