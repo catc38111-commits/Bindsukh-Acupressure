@@ -1562,94 +1562,53 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
           </div>
         </div>
 
-        {/* Submit Button */}
-        <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-xs text-slate-500">
-            {language === 'hi'
-              ? 'आगे बढ़ने पर, एक तत्काल अपॉइंटमेंट टोकन जारी किया जाएगा।'
-              : language === 'hinglish'
-              ? 'Aage badhne par instant appointment token generate ho jayega.'
-              : 'By proceeding, an instant appointment token will be generated.'}
-          </div>
-
-          <button
-            id="submit-booking-btn"
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-emerald-800 via-emerald-700 to-emerald-800 hover:from-emerald-900 hover:to-emerald-900 active:scale-[0.99] text-white font-bold rounded-2xl shadow-lg shadow-emerald-900/20 text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {isSubmitting ? (
-              <span>{language === 'hi' ? 'अपॉइंटमेंट दर्ज हो रहा है...' : language === 'hinglish' ? 'Booking Confirm Ho Rahi Hai...' : 'Confirming Booking...'}</span>
-            ) : paymentMethod === 'upi_qr' ? (
-              <>
-                <QrCode className="w-4 h-4" />
-                <span>{language === 'hi' ? `UPI QR से भुगतान व कन्फर्म (₹${calculatedFee})` : language === 'hinglish' ? `UPI QR Se Pay Karein & Confirm (₹${calculatedFee})` : `Open UPI QR & Confirm (₹${calculatedFee})`}</span>
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="w-4 h-4" />
-                <span>{t('confirmBookingBtn')}</span>
-              </>
-            )}
-          </button>
-        </div>
-      </form>
-
-      {/* Sticky Bottom Floating Bar with Total Amount & Direct Pay Now Action Button */}
-      <div
-        id="booking-sticky-pay-bar"
-        className="fixed bottom-0 left-0 right-0 z-50 bg-[#042417] text-white border-t border-emerald-700/60 shadow-[0_-4px_20px_rgba(0,0,0,0.4)] px-4 py-2.5 select-none no-print transition-all"
-        style={{ paddingBottom: 'max(0.625rem, env(safe-area-inset-bottom))' }}
-      >
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
-          {/* Left: Total Fee and Slot Summary (Clickable to scroll to payment section) */}
-          <div
-            onClick={scrollToPaymentSection}
-            className="flex flex-col cursor-pointer active:opacity-75 transition-opacity"
-            title="Click to view Payment / Consultation Fee section"
-          >
+        {/* Inline Booking & Payment Summary Card */}
+        <div className="bg-[#042417] text-white rounded-2xl p-4 sm:p-5 shadow-md border border-emerald-700/60 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex flex-col">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[11px] sm:text-xs font-bold text-emerald-200/90 uppercase tracking-wider">
+              <span className="text-xs font-bold text-emerald-200/90 uppercase tracking-wider">
                 {language === 'hi' ? 'कुल राशि:' : language === 'hinglish' ? 'TOTAL:' : 'TOTAL:'}
               </span>
-              <span className="text-lg sm:text-xl font-black text-amber-300 font-mono tracking-tight leading-none drop-shadow-xs">
+              <span className="text-xl sm:text-2xl font-black text-amber-300 font-mono tracking-tight leading-none">
                 ₹{calculatedFee}
               </span>
-              <span className="text-[9px] sm:text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/40 px-2 py-0.5 rounded-md leading-none">
+              <span className="text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/40 px-2.5 py-0.5 rounded-md">
                 {patientHistory?.isReturning ? (language === 'hi' ? 'पुराना मरीज' : 'Returning') : (language === 'hi' ? 'नया मरीज' : '1st Visit')}
               </span>
             </div>
-            <div className="text-[10px] sm:text-[11px] text-emerald-200/80 font-medium truncate max-w-[160px] sm:max-w-md flex items-center gap-1.5 mt-0.5">
-              <Clock className="w-3 h-3 text-amber-400 shrink-0" />
-              <span className="truncate">
+            <div className="text-xs text-emerald-200/80 font-medium flex items-center gap-1.5 mt-1">
+              <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span>
                 {selectedSlot ? selectedSlot.split(' - ')[0] : (language === 'hi' ? 'स्लॉट चुनें' : 'Select Slot')}
                 {date ? ` • ${date}` : ''}
               </span>
             </div>
           </div>
 
-          {/* Right: Direct Pay Now Action Button */}
           <button
-            type="button"
-            onClick={(e) => {
-              handleBookingSubmit(e);
-            }}
+            id="submit-booking-btn"
+            type="submit"
             disabled={isSubmitting}
-            className="px-4 sm:px-6 py-2.5 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 active:scale-95 text-emerald-950 font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-amber-500/25 transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer border border-amber-300 shrink-0 disabled:opacity-50"
-            title="Proceed to confirm and pay"
+            className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 active:scale-95 text-emerald-950 font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-amber-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer border border-amber-300 shrink-0 disabled:opacity-50"
           >
             {isSubmitting ? (
               <span>{language === 'hi' ? 'प्रोसेसिंग...' : 'Processing...'}</span>
+            ) : paymentMethod === 'upi_qr' ? (
+              <>
+                <QrCode className="w-4 h-4 text-emerald-950 stroke-[2.5]" />
+                <span>{language === 'hi' ? `UPI QR से भुगतान व कन्फर्म (₹${calculatedFee})` : language === 'hinglish' ? `UPI QR Se Pay Karein & Confirm (₹${calculatedFee})` : `Open UPI QR & Confirm (₹${calculatedFee})`}</span>
+                <Sparkles className="w-3.5 h-3.5 text-emerald-950 fill-emerald-950" />
+              </>
             ) : (
               <>
-                <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-950 stroke-[2.5]" />
-                <span>{paymentMethod === 'upi_qr' ? (language === 'hi' ? 'Pay Now (UPI)' : 'Pay Now') : (language === 'hi' ? 'अभी Pay करें' : 'Pay Now')}</span>
-                <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-950 fill-emerald-950" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-950 stroke-[2.5]" />
+                <span>{t('confirmBookingBtn')}</span>
+                <Sparkles className="w-3.5 h-3.5 text-emerald-950 fill-emerald-950" />
               </>
             )}
           </button>
         </div>
-      </div>
+      </form>
 
       {/* Live UPI QR Code Modal */}
       <UpiPaymentModal

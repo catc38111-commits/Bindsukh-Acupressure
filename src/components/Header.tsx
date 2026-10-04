@@ -2,6 +2,7 @@ import React from 'react';
 import { CLINIC_INFO } from '../data/clinicData';
 import { useClinicLogo } from '../utils/logoHelper';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import {
   Building2,
@@ -22,7 +23,9 @@ import {
   CheckCircle2,
   Star,
   QrCode,
-  Download
+  Download,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -52,6 +55,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const clinicLogo = useClinicLogo();
   const { t, language } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
 
   const registerBookText = language === 'en'
     ? "Register / Book"
@@ -99,6 +103,15 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Right side controls */}
         <div className="flex items-center gap-1.5 shrink-0">
           <LanguageSwitcher />
+
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-amber-300 flex items-center justify-center transition-all cursor-pointer border border-slate-200 dark:border-slate-700"
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4 text-emerald-800" />}
+          </button>
           
           <button
             id="admin-toggle-btn"
