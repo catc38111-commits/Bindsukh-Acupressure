@@ -24,6 +24,32 @@
     color: #F1F5F9 !important;
   }
 
+  /* FORCED GLOBAL DARK MODE OVERRIDES */
+  html.dark .bg-white,
+  html.dark .bg-slate-50,
+  html.dark .bg-emerald-50,
+  html.dark .bg-gray-50,
+  html.dark [class*="bg-white"] {
+    background-color: #122019 !important;
+    border-color: #20382C !important;
+  }
+
+  html.dark .text-slate-800,
+  html.dark .text-gray-900,
+  html.dark .text-slate-900,
+  html.dark .text-emerald-950,
+  html.dark h1, html.dark h2, html.dark h3, html.dark h4, html.dark p, html.dark span, html.dark label {
+    color: #F3F4F6 !important;
+  }
+
+  html.dark input,
+  html.dark select,
+  html.dark textarea {
+    background-color: #182B22 !important;
+    color: #FFFFFF !important;
+    border-color: #244233 !important;
+  }
+
   h1, h2, h3, .font-serif {
     font-family: 'Playfair Display', Georgia, serif;
   }
