@@ -208,33 +208,65 @@ a:hover,
   }
 }
 
-/* Force Dark Theme for Entire App & Forms */
-body, #root, main {
+/* Dynamic Light / Dark styling using standard Tailwind dark: utility classes */
+html:not(.dark) {
+  background-color: #F4F7F5 !important;
+  color: #0F172A !important;
+}
+
+html:not(.dark) body, html:not(.dark) #root, html:not(.dark) main {
+  background-color: #F4F7F5 !important;
+  color: #0F172A !important;
+}
+
+html:not(.dark) .bg-white,
+html:not(.dark) [class*="bg-slate-"],
+html:not(.dark) [class*="bg-gray-"],
+html:not(.dark) [class*="bg-emerald-"] {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  border-color: #E2E8F0 !important;
+}
+
+html:not(.dark) h1, html:not(.dark) h2, html:not(.dark) h3, html:not(.dark) h4, html:not(.dark) h5, html:not(.dark) h6, html:not(.dark) label, html:not(.dark) p, html:not(.dark) span {
+  color: #0F172A !important;
+}
+
+html:not(.dark) input, html:not(.dark) select, html:not(.dark) textarea {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
+
+html.dark {
   background-color: #08110B !important;
   color: #FFFFFF !important;
 }
 
-/* Force dark background on all form containers and card wrappers */
-.bg-white, .bg-slate-50, .bg-gray-50, .bg-emerald-50, [class*="bg-slate-"], [class*="bg-gray-"] {
+html.dark body, html.dark #root, html.dark main {
+  background-color: #08110B !important;
+  color: #FFFFFF !important;
+}
+
+html.dark .bg-white,
+html.dark .bg-slate-50,
+html.dark .bg-gray-50,
+html.dark .bg-emerald-50,
+html.dark [class*="bg-slate-"],
+html.dark [class*="bg-gray-"] {
   background-color: #122219 !important;
   border-color: #213C2D !important;
 }
 
-/* Force high contrast text on all headers, labels, and text inside forms */
-h1, h2, h3, h4, h5, h6, label, p, span {
+html.dark h1, html.dark h2, html.dark h3, html.dark h4, html.dark h5, html.dark h6, html.dark label, html.dark p, html.dark span {
   color: #FFFFFF !important;
 }
 
-/* Specific text color for form section subheaders */
-.text-emerald-800, .text-emerald-900, .text-slate-700, .text-slate-800, .text-gray-700 {
-  color: #6EE7B7 !important;
-}
-
-/* Fix input fields and select dropdowns */
-input, select, textarea {
+html.dark input, html.dark select, html.dark textarea {
   background-color: #0A1610 !important;
   color: #FFFFFF !important;
   border-color: #213C2D !important;
 }
+
 
 
