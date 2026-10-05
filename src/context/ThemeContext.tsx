@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-type Theme = 'light' | 'dark';
+type Theme = 'light';
 
 interface ThemeContextType {
   theme: Theme;
@@ -13,36 +13,19 @@ const ThemeContext = createContext<ThemeContextType>({
 });
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setTheme] = useState<Theme>(() => {
-    try {
-      const stored = localStorage.getItem('bindsukh_theme');
-      if (stored === 'dark' || stored === 'light') {
-        return stored;
-      }
-      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        return 'dark';
-      }
-    } catch (e) {
-      console.warn('Error reading theme from localStorage:', e);
-    }
-    return 'light';
-  });
+  const [theme] = useState<Theme>('light');
 
   useEffect(() => {
     try {
-      localStorage.setItem('bindsukh_theme', theme);
-      if (theme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
+      localStorage.setItem('bindsukh_theme', 'light');
+      document.documentElement.classList.remove('dark');
     } catch (e) {
-      console.warn('Error writing theme to localStorage:', e);
+      console.warn('Error setting theme:', e);
     }
-  }, [theme]);
+  }, []);
 
   const toggleTheme = () => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+    // Light mode is locked permanently
   };
 
   return (
