@@ -210,13 +210,14 @@ a:hover,
 
 /* Force Dark Theme for Entire App & Forms */
 body, #root, main {
-  background-color: #0B1510 !important;
+  background-color: #08110B !important;
   color: #FFFFFF !important;
 }
 
 /* Force dark background on all form containers and card wrappers */
 .bg-white, .bg-slate-50, .bg-gray-50, .bg-emerald-50, [class*="bg-slate-"], [class*="bg-gray-"] {
-  background-color: #13221B !important;
+  background-color: #122219 !important;
+  border-color: #213C2D !important;
 }
 
 /* Force high contrast text on all headers, labels, and text inside forms */
@@ -226,14 +227,14 @@ h1, h2, h3, h4, h5, h6, label, p, span {
 
 /* Specific text color for form section subheaders */
 .text-emerald-800, .text-emerald-900, .text-slate-700, .text-slate-800, .text-gray-700 {
-  color: #A7F3D0 !important;
+  color: #6EE7B7 !important;
 }
 
 /* Fix input fields and select dropdowns */
 input, select, textarea {
-  background-color: #0E1B13 !important;
+  background-color: #0A1610 !important;
   color: #FFFFFF !important;
-  border-color: #284A36 !important;
+  border-color: #213C2D !important;
 }
 
 
