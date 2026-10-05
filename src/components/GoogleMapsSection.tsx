@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
+import { motion } from 'framer-motion';
 import { CLINIC_INFO } from '../data/clinicData';
 import { GOOGLE_BUSINESS_INFO } from '../data/clinicPhotosData';
 import {
@@ -21,12 +22,32 @@ interface GoogleMapsSectionProps {
   onBookClick?: () => void;
 }
 
-export const GoogleMapsSection: React.FC<GoogleMapsSectionProps> = ({ onBookClick }) => {
+export const GoogleMapsSection: React.FC<GoogleMapsSectionProps> = memo(({ onBookClick }) => {
   const [copied, setCopied] = useState(false);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
 
   // Exact Google Maps directions destination
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=25.5028,81.6756&destination_place_id=ChIJfyroHkOqmjkRf7_j9ZL9fXw`;
   const viewMapUrl = GOOGLE_BUSINESS_INFO.googleMapsUrl;
+
+  // Passive touch event listener setup for high refresh rate (120Hz/144Hz) gesture smoothness
+  useEffect(() => {
+    const el = mapContainerRef.current;
+    if (!el) return;
+
+    const passiveOpts: AddEventListenerOptions = { passive: true };
+    const noop = () => {};
+
+    el.addEventListener('touchstart', noop, passiveOpts);
+    el.addEventListener('touchmove', noop, passiveOpts);
+    el.addEventListener('wheel', noop, passiveOpts);
+
+    return () => {
+      el.removeEventListener('touchstart', noop);
+      el.removeEventListener('touchmove', noop);
+      el.removeEventListener('wheel', noop);
+    };
+  }, []);
 
   const handleCopyAddress = () => {
     navigator.clipboard.writeText(
@@ -42,7 +63,13 @@ export const GoogleMapsSection: React.FC<GoogleMapsSectionProps> = ({ onBookClic
   };
 
   return (
-    <section id="google-maps-location-section" className="space-y-6">
+    <motion.section
+      id="google-maps-location-section"
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+      className="space-y-6 smooth-gpu"
+    >
       <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200/90 shadow-xl overflow-hidden relative">
         {/* Decorative background glows */}
         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 rounded-full bg-emerald-400/10 blur-3xl pointer-events-none" />
@@ -65,26 +92,28 @@ export const GoogleMapsSection: React.FC<GoogleMapsSectionProps> = ({ onBookClic
 
           {/* Quick Action: Get Directions Button */}
           <div className="flex flex-wrap items-center gap-3">
-            <a
+            <motion.a
               id="get-directions-btn"
+              whileTap={{ scale: 0.96 }}
               href={directionsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-5 py-3.5 bg-gradient-to-r from-emerald-800 to-emerald-950 hover:from-emerald-700 hover:to-emerald-900 text-white font-extrabold rounded-2xl shadow-lg shadow-emerald-900/20 text-xs sm:text-sm transition-all flex items-center gap-2 border border-emerald-700 active:scale-95 cursor-pointer"
+              className="px-5 py-3.5 bg-gradient-to-r from-emerald-800 to-emerald-950 hover:from-emerald-700 hover:to-emerald-900 text-white font-extrabold rounded-2xl shadow-lg shadow-emerald-900/20 text-xs sm:text-sm transition-all flex items-center gap-2 border border-emerald-700 cursor-pointer"
             >
               <Navigation className="w-4 h-4 text-amber-300" />
               <span>Get Directions / Clinic Location</span>
               <ExternalLink className="w-3.5 h-3.5 text-emerald-300" />
-            </a>
+            </motion.a>
 
-            <button
+            <motion.button
               type="button"
+              whileTap={{ scale: 0.96 }}
               onClick={handleShareLocation}
               className="px-4 py-3.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold rounded-2xl border border-emerald-300 text-xs sm:text-sm transition-colors flex items-center gap-2 cursor-pointer"
             >
               <Share2 className="w-4 h-4 text-emerald-700" />
               <span>व्हाट्सएप पर लोकेशन भेजें</span>
-            </button>
+            </motion.button>
           </div>
         </div>
 
@@ -92,17 +121,32 @@ export const GoogleMapsSection: React.FC<GoogleMapsSectionProps> = ({ onBookClic
         <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 pt-6 items-stretch">
           {/* Left Column: Embedded Interactive Google Map */}
           <div className="lg:col-span-7 flex flex-col space-y-3">
-            <div className="relative w-full h-[360px] sm:h-[420px] rounded-2xl overflow-hidden border-2 border-slate-200 shadow-md bg-slate-100 group">
+            <div
+              ref={mapContainerRef}
+              id="google-maps-iframe-container"
+              className="smooth-gpu relative w-full h-[360px] sm:h-[420px] rounded-2xl overflow-hidden border-2 border-slate-200 shadow-md bg-slate-100 group"
+              style={{
+                transform: 'translate3d(0, 0, 0)',
+                WebkitTransform: 'translate3d(0, 0, 0)',
+                willChange: 'transform, opacity',
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden'
+              }}
+            >
               <iframe
                 title="Bindsukh Acupressure Center Location Map"
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d14406.845942478586!2d81.6669!3d25.5028!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x399aca431ef82a7f%3A0x7c7dfd92f5e3bf7d!2sPuramufti%2C%20Prayagraj%2C%20Uttar%20Pradesh!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"
                 width="100%"
                 height="100%"
-                style={{ border: 0 }}
+                style={{
+                  border: 0,
+                  transform: 'translate3d(0, 0, 0)',
+                  WebkitTransform: 'translate3d(0, 0, 0)'
+                }}
                 allowFullScreen={true}
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
-                className="w-full h-full"
+                className="w-full h-full smooth-gpu"
               />
 
               {/* Floating Map Overlay Badge */}
@@ -112,7 +156,8 @@ export const GoogleMapsSection: React.FC<GoogleMapsSectionProps> = ({ onBookClic
               </div>
 
               {/* Floating Fullscreen Map Button */}
-              <a
+              <motion.a
+                whileTap={{ scale: 0.96 }}
                 href={viewMapUrl}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -120,7 +165,7 @@ export const GoogleMapsSection: React.FC<GoogleMapsSectionProps> = ({ onBookClic
               >
                 <span>Open in Google Maps App</span>
                 <ExternalLink className="w-3.5 h-3.5 text-amber-300" />
-              </a>
+              </motion.a>
             </div>
 
             <div className="flex items-center justify-between text-xs text-slate-500 px-1">
@@ -146,14 +191,15 @@ export const GoogleMapsSection: React.FC<GoogleMapsSectionProps> = ({ onBookClic
                   </p>
                 </div>
 
-                <button
+                <motion.button
                   type="button"
+                  whileTap={{ scale: 0.94 }}
                   onClick={handleCopyAddress}
                   className="p-2 rounded-xl bg-white hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors shrink-0 shadow-2xs"
                   title="पता कॉपी करें (Copy Address)"
                 >
                   {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                </button>
+                </motion.button>
               </div>
 
               {copied && (
@@ -205,27 +251,29 @@ export const GoogleMapsSection: React.FC<GoogleMapsSectionProps> = ({ onBookClic
 
             {/* Call Doctor Button */}
             <div className="pt-1 flex items-center gap-2">
-              <a
+              <motion.a
+                whileTap={{ scale: 0.96 }}
                 href={`tel:${CLINIC_INFO.phones[0].replace(/\s+/g, '')}`}
                 className="flex-1 py-3 bg-white hover:bg-emerald-50 text-emerald-900 font-bold rounded-2xl border border-emerald-300 text-xs shadow-xs transition-colors flex items-center justify-center gap-2"
               >
                 <Phone className="w-4 h-4 text-emerald-700" />
                 <span>मार्गदर्शन के लिए कॉल: +91 9455100097</span>
-              </a>
+              </motion.a>
 
               {onBookClick && (
-                <button
+                <motion.button
                   type="button"
+                  whileTap={{ scale: 0.96 }}
                   onClick={onBookClick}
                   className="px-4 py-3 bg-amber-400 hover:bg-amber-500 text-emerald-950 font-black rounded-2xl shadow-xs text-xs transition-colors cursor-pointer"
                 >
                   स्लॉट बुक करें
-                </button>
+                </motion.button>
               )}
             </div>
           </div>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
-};
+});

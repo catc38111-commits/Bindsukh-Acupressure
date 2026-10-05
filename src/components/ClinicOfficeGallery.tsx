@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 import { CLINIC_PHOTOS, GOOGLE_BUSINESS_INFO, ClinicPhoto } from '../data/clinicPhotosData';
 import { CLINIC_INFO } from '../data/clinicData';
@@ -24,7 +25,7 @@ interface ClinicOfficeGalleryProps {
   onBookClick?: () => void;
 }
 
-export const ClinicOfficeGallery: React.FC<ClinicOfficeGalleryProps> = ({ onBookClick }) => {
+export const ClinicOfficeGallery: React.FC<ClinicOfficeGalleryProps> = memo(({ onBookClick }) => {
   const { language } = useLanguage();
   const [selectedPhoto, setSelectedPhoto] = useState<ClinicPhoto | null>(null);
   useLockBodyScroll(Boolean(selectedPhoto));
@@ -145,7 +146,13 @@ export const ClinicOfficeGallery: React.FC<ClinicOfficeGalleryProps> = ({ onBook
     : `(${GOOGLE_BUSINESS_INFO.reviewCount}+ Reviews)`;
 
   return (
-    <section id="clinic-office-gallery-section" className="space-y-6">
+    <motion.section
+      id="clinic-office-gallery-section"
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+      className="space-y-6 smooth-gpu"
+    >
       {/* Header Card with Google Business Badge */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xl overflow-hidden relative">
         {/* Ambient subtle glow */}
@@ -154,7 +161,7 @@ export const ClinicOfficeGallery: React.FC<ClinicOfficeGalleryProps> = ({ onBook
 
         <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-6 border-b border-slate-200">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100/90 text-emerald-900 text-xs font-bold border border-emerald-300">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-100/90 text-emerald-900 text-xs font-bold border border-emerald-300">
               <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
               <span>{headerBadge}</span>
             </div>
@@ -210,18 +217,19 @@ export const ClinicOfficeGallery: React.FC<ClinicOfficeGalleryProps> = ({ onBook
           {Object.keys(filterLabels).map((key) => {
             const isSelected = activeFilter === key;
             return (
-              <button
+              <motion.button
                 key={key}
                 type="button"
+                whileTap={{ scale: 0.94 }}
                 onClick={() => setActiveFilter(key as any)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                   isSelected
                     ? 'bg-emerald-900 text-white shadow-sm ring-2 ring-amber-400/50'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
               >
                 {filterLabels[key][language]}
-              </button>
+              </motion.button>
             );
           })}
         </div>
@@ -449,6 +457,6 @@ export const ClinicOfficeGallery: React.FC<ClinicOfficeGalleryProps> = ({ onBook
           </div>
         );
       })()}
-    </section>
+    </motion.section>
   );
-};
+});

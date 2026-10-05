@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
+import { motion } from 'framer-motion';
 import { CLINIC_INFO } from '../data/clinicData';
 import { ClinicOfficeGallery } from './ClinicOfficeGallery';
 import { CLINIC_PHOTOS } from '../data/clinicPhotosData';
@@ -31,7 +32,7 @@ interface DoctorProfileProps {
   onAdminToggle?: () => void;
 }
 
-export const DoctorProfile: React.FC<DoctorProfileProps> = ({
+export const DoctorProfile: React.FC<DoctorProfileProps> = memo(({
   onBookClick,
   isAdminUnlocked,
   onAdminToggle
@@ -44,7 +45,13 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({
   const liveAcupuncturePhotos = CLINIC_PHOTOS.filter((p) => p.category === 'acupuncture_live');
 
   return (
-    <div id="doctor-profile-section" className="space-y-8">
+    <motion.div
+      id="doctor-profile-section"
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+      className="space-y-8 smooth-gpu"
+    >
       {/* 1. Dedicated Showcase Main Profile Card for Therapist Saurabh Prajapati */}
       <div
         className="text-white rounded-3xl p-6 sm:p-10 border-2 border-amber-400/80 shadow-2xl overflow-hidden relative bg-emerald-950 bg-cover bg-center"
@@ -444,6 +451,6 @@ export const DoctorProfile: React.FC<DoctorProfileProps> = ({
 
       {/* Real Clinic Office & Treatment Rooms Showcase */}
       <ClinicOfficeGallery onBookClick={onBookClick} />
-    </div>
+    </motion.div>
   );
-};
+});

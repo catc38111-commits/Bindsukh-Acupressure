@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
+import { motion } from 'framer-motion';
 import QRCode from 'qrcode';
 import { CLINIC_INFO, SERVICES_OFFERED, CONDITIONS_TREATED } from '../data/clinicData';
 import { PatientAppointment, SlotAvailability, PatientHistoryCheck, PatientProfile } from '../types';
@@ -96,7 +97,7 @@ const isSlotExpired = (slotStr: string, isTodaySelected: boolean): boolean => {
   return false;
 };
 
-export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }) => {
+export const BookingForm: React.FC<BookingFormProps> = memo(({ onAppointmentCreated }) => {
   const { t, language } = useLanguage();
   const todayStr = () => {
     const now = new Date();
@@ -674,7 +675,13 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
   };
 
   return (
-    <div id="booking-form-wrapper" className="liquid-glass-card rounded-3xl shadow-2xl border border-white/80 overflow-hidden relative">
+    <motion.div
+      id="booking-form-wrapper"
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+      className="liquid-glass-card rounded-3xl shadow-2xl border border-white/80 overflow-hidden relative smooth-gpu"
+    >
       {/* Floating Instant Toast Notification for Feedback / Copy */}
       {(toastMessage || upiCopiedToast) && (
         <div
@@ -1585,11 +1592,12 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
             </div>
           </div>
 
-          <button
+          <motion.button
             id="submit-booking-btn"
             type="submit"
+            whileTap={{ scale: 0.96 }}
             disabled={isSubmitting}
-            className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 active:scale-95 text-emerald-950 font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-amber-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer border border-amber-300 shrink-0 disabled:opacity-50"
+            className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-emerald-950 font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-amber-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer border border-amber-300 shrink-0 disabled:opacity-50"
           >
             {isSubmitting ? (
               <span>{language === 'hi' ? 'प्रोसेसिंग...' : 'Processing...'}</span>
@@ -1606,7 +1614,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
                 <Sparkles className="w-3.5 h-3.5 text-emerald-950 fill-emerald-950" />
               </>
             )}
-          </button>
+          </motion.button>
         </div>
       </form>
 
@@ -1622,6 +1630,6 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onAppointmentCreated }
         onPaymentConfirmed={(refId) => submitAppointmentToServer(refId)}
         isSubmitting={isSubmitting}
       />
-    </div>
+    </motion.div>
   );
-};
+});

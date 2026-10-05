@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { memo } from 'react';
+import { motion } from 'framer-motion';
 import { CLINIC_INFO, CONDITIONS_TREATED } from '../data/clinicData';
 import { GOOGLE_BUSINESS_INFO } from '../data/clinicPhotosData';
 import { useClinicLogo } from '../utils/logoHelper';
@@ -24,14 +25,17 @@ interface HeroBannerProps {
   onViewPhotosClick?: () => void;
 }
 
-export const HeroBanner: React.FC<HeroBannerProps> = ({ onBookNowClick, onViewPhotosClick }) => {
+export const HeroBanner: React.FC<HeroBannerProps> = memo(({ onBookNowClick, onViewPhotosClick }) => {
   const clinicLogo = useClinicLogo();
   const { t, language } = useLanguage();
 
   return (
-    <div
+    <motion.div
       id="hero-banner-section"
-      className="relative overflow-hidden rounded-3xl text-white p-6 sm:p-10 shadow-2xl border border-white/20 bg-emerald-950 bg-cover bg-center"
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+      className="smooth-gpu relative overflow-hidden rounded-3xl text-white p-6 sm:p-10 shadow-2xl border border-white/20 bg-emerald-950 bg-cover bg-center"
       style={{ backgroundImage: `url('https://i.postimg.cc/qNk2g2NW/IMG-20261001-WA0048.jpg')` }}
     >
       {/* Dark overlay for rich text contrast */}
@@ -134,33 +138,36 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBookNowClick, onViewPh
 
           {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-3 pt-2">
-            <button
+            <motion.button
               id="hero-book-session-btn"
+              whileTap={{ scale: 0.96 }}
               onClick={onBookNowClick}
-              className="px-6 py-3.5 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 hover:from-amber-300 hover:to-amber-500 active:scale-95 text-emerald-950 font-extrabold rounded-2xl shadow-xl shadow-amber-400/25 text-sm transition-all flex items-center gap-2 group border border-white/40 cursor-pointer"
+              className="px-6 py-3.5 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 hover:from-amber-300 hover:to-amber-500 text-emerald-950 font-extrabold rounded-2xl shadow-xl shadow-amber-400/25 text-sm transition-all flex items-center gap-2 group border border-white/40 cursor-pointer"
             >
               <span>{t('bookNowBtn')}</span>
               <Sparkles className="w-4 h-4 text-emerald-950 group-hover:rotate-12 transition-transform" />
-            </button>
+            </motion.button>
 
             {onViewPhotosClick && (
-              <button
+              <motion.button
                 type="button"
+                whileTap={{ scale: 0.96 }}
                 onClick={onViewPhotosClick}
-                className="px-4 py-3.5 liquid-glass-pill hover:bg-white/20 active:scale-95 text-amber-300 rounded-2xl text-sm font-bold transition-all border border-amber-300/40 flex items-center gap-2 shadow-sm cursor-pointer"
+                className="px-4 py-3.5 liquid-glass-pill hover:bg-white/20 text-amber-300 rounded-2xl text-sm font-bold transition-all border border-amber-300/40 flex items-center gap-2 shadow-sm cursor-pointer"
               >
                 <Building2 className="w-4 h-4 text-amber-400" />
                 <span>{t('viewPhotosBtn')}</span>
-              </button>
+              </motion.button>
             )}
 
-            <a
+            <motion.a
+              whileTap={{ scale: 0.96 }}
               href={`tel:${CLINIC_INFO.phones[0].replace(/\s+/g, '')}`}
-              className="px-5 py-3.5 liquid-glass-pill hover:bg-white/20 active:scale-95 text-white rounded-2xl text-sm font-semibold transition-all border border-white/30 flex items-center gap-2 shadow-sm"
+              className="px-5 py-3.5 liquid-glass-pill hover:bg-white/20 text-white rounded-2xl text-sm font-semibold transition-all border border-white/30 flex items-center gap-2 shadow-sm"
             >
               <Phone className="w-4 h-4 text-amber-300" />
               <span>{t('callBtn')}</span>
-            </a>
+            </motion.a>
           </div>
         </div>
 
@@ -253,6 +260,6 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ onBookNowClick, onViewPh
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
-};
+});

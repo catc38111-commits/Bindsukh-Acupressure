@@ -208,7 +208,18 @@ a:hover,
   }
 }
 
+* {
+  -webkit-tap-highlight-color: transparent;
+}
 
+html, body {
+  scroll-behavior: smooth;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
 
-
-
+.smooth-gpu {
+  will-change: transform, opacity;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}

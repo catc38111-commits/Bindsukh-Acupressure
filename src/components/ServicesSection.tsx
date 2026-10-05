@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { memo } from 'react';
+import { motion } from 'framer-motion';
 import { SERVICES_OFFERED, CONDITIONS_TREATED } from '../data/clinicData';
 import { useLanguage } from '../context/LanguageContext';
 import {
@@ -17,7 +18,7 @@ interface ServicesSectionProps {
   onSelectServiceToBook: (serviceName: string) => void;
 }
 
-export const ServicesSection: React.FC<ServicesSectionProps> = ({ onSelectServiceToBook }) => {
+export const ServicesSection: React.FC<ServicesSectionProps> = memo(({ onSelectServiceToBook }) => {
   const { language } = useLanguage();
 
   const getIcon = (id: string) => {
@@ -82,7 +83,13 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ onSelectServic
     : "Acupressure aur acupuncture se nerves activate hote hain jo body ki self-healing power badhate hain.";
 
   return (
-    <div id="services-section-wrapper" className="space-y-10">
+    <motion.div
+      id="services-section-wrapper"
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+      className="space-y-10 smooth-gpu"
+    >
       {/* Services Heading */}
       <div className="text-center max-w-2xl mx-auto space-y-2">
         <span className="text-xs font-bold text-amber-800 bg-amber-100 px-3 py-1 rounded-full uppercase tracking-wider">
@@ -98,16 +105,19 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ onSelectServic
 
       {/* Services Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {SERVICES_OFFERED.map((svc) => {
+        {SERVICES_OFFERED.map((svc, idx) => {
           const serviceTitle = language === 'hi' ? svc.hindi : svc.name;
           const serviceDesc = language === 'hi'
             ? `${svc.description} (बिना दवा का सुरक्षित इलाज)`
             : svc.description;
 
           return (
-            <div
+            <motion.div
               key={svc.id}
-              className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-lg transition-all hover:border-emerald-300 flex flex-col justify-between group"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: idx * 0.04, ease: 'easeOut' }}
+              className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-lg transition-all hover:border-emerald-300 flex flex-col justify-between group smooth-gpu"
             >
               {/* Visual Clinical Photo Header */}
               {'imageUrl' in svc && svc.imageUrl && (
@@ -153,22 +163,28 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ onSelectServic
                   <span className="text-xs font-bold text-emerald-900">
                     ₹500 <span className="text-slate-400 font-normal">/</span> ₹200
                   </span>
-                  <button
+                  <motion.button
                     type="button"
+                    whileTap={{ scale: 0.96 }}
                     onClick={() => onSelectServiceToBook(svc.name)}
                     className="px-3.5 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer shadow-xs"
                   >
                     {bookButtonText}
-                  </button>
+                  </motion.button>
                 </div>
               </div>
-            </div>
+            </motion.div>
           );
         })}
       </div>
 
       {/* Conditions Treated Section */}
-      <div className="bg-gradient-to-br from-emerald-900 via-emerald-950 to-emerald-900 rounded-3xl p-6 sm:p-10 text-white space-y-6">
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+        className="bg-gradient-to-br from-emerald-900 via-emerald-950 to-emerald-900 rounded-3xl p-6 sm:p-10 text-white space-y-6 smooth-gpu"
+      >
         <div className="max-w-xl space-y-2">
           <span className="text-xs font-bold text-amber-300 bg-amber-400/20 px-3 py-1 rounded-full uppercase tracking-wider border border-amber-400/30">
             {ailmentsLabel}
@@ -207,7 +223,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ onSelectServic
             );
           })}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
-};
+});
