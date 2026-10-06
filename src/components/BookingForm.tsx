@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
 import { motion } from 'framer-motion';
 import QRCode from 'qrcode';
-import { CLINIC_INFO, SERVICES_OFFERED, CONDITIONS_TREATED } from '../data/clinicData';
+import { CLINIC_INFO, SERVICES_OFFERED, CONDITIONS_TREATED, getSlotsForDate, WEEKDAY_SLOTS, SUNDAY_SLOTS } from '../data/clinicData';
 import { PatientAppointment, SlotAvailability, PatientHistoryCheck, PatientProfile } from '../types';
 import { UpiPaymentModal } from './UpiPaymentModal';
 import { saveAppointmentToFirestore } from '../utils/firebase';
@@ -41,19 +41,9 @@ interface BookingFormProps {
   onAppointmentCreated: (appointment: PatientAppointment) => void;
 }
 
-const DEFAULT_1HOUR_SLOTS = [
-  '08:00 AM - 09:00 AM',
-  '09:00 AM - 10:00 AM',
-  '10:00 AM - 11:00 AM',
-  '11:00 AM - 12:00 PM',
-  '12:00 PM - 01:00 PM',
-  '01:00 PM - 02:00 PM',
-  '02:00 PM - 03:00 PM',
-  '03:00 PM - 04:00 PM',
-];
-
-const generateFallbackSlots = (): SlotAvailability[] => {
-  return DEFAULT_1HOUR_SLOTS.map((s) => ({
+const generateFallbackSlots = (dateStr?: string): SlotAvailability[] => {
+  const slotList = getSlotsForDate(dateStr);
+  return slotList.map((s) => ({
     slot: s,
     maxCapacity: 5,
     bookedCount: 0,
@@ -130,6 +120,15 @@ export const BookingForm: React.FC<BookingFormProps> = memo(({ onAppointmentCrea
   const [paymentMethod, setPaymentMethod] = useState<'pay_at_clinic' | 'upi_qr'>('upi_qr');
   const [reminderChannel, setReminderChannel] = useState<'whatsapp' | 'sms' | 'both'>('both');
   const [notes, setNotes] = useState('');
+
+  // Dynamic fee calculation & visit type state
+  const [visitType, setVisitType] = useState<'first_visit' | 'returning_patient'>('first_visit');
+  const [fee, setFee] = useState<number>(500);
+
+  const handleVisitTypeChange = (type: 'first_visit' | 'returning_patient') => {
+    setVisitType(type);
+    setFee(type === 'first_visit' ? 500 : 200);
+  };
 
   // Slot Availability state from backend
   const [slots, setSlots] = useState<SlotAvailability[]>(() => generateFallbackSlots());
@@ -327,44 +326,54 @@ export const BookingForm: React.FC<BookingFormProps> = memo(({ onAppointmentCrea
     try {
       setLoadingSlots(true);
       const endpoint = getAbsoluteApiUrl(`/api/slots?date=${targetDate}`);
-      const res = await fetch(endpoint, { cache: 'no-store' });
+      let res: Response | null = null;
+      try {
+        res = await fetch(endpoint, { cache: 'no-store' });
+      } catch (networkErr) {
+        // Quick retry once in case server was starting
+        await new Promise(r => setTimeout(r, 200));
+        res = await fetch(endpoint, { cache: 'no-store' }).catch(() => null);
+      }
+
       const isToday = targetDate === todayStr();
       
-      const parsed = await safeParseJsonResponse<{ slots: SlotAvailability[] }>(res);
-
-      if (parsed.ok && parsed.data) {
-        const rawSlots = parsed.data.slots || [];
-        const fetchedSlots = mergeSlotsWithLocalAppointments(
-          rawSlots.length > 0 ? rawSlots : generateFallbackSlots(),
-          targetDate
-        );
-        
-        setSlots(fetchedSlots);
-        // Auto-select the first available upcoming valid slot by default when date changes
-        const currentSlotObj = fetchedSlots.find((s: SlotAvailability) => s.slot === selectedSlot);
-        const isCurrentExpired = selectedSlot ? isSlotExpired(selectedSlot, isToday) : true;
-        
-        if (!currentSlotObj || currentSlotObj.isFull || isCurrentExpired) {
-          const firstAvailableUpcoming = fetchedSlots.find((s: SlotAvailability) => {
-            const expired = isSlotExpired(s.slot, isToday);
-            return !s.isFull && !expired;
-          });
-          if (firstAvailableUpcoming) {
-            setSelectedSlot(firstAvailableUpcoming.slot);
-          } else {
-            // If no upcoming available slots left for today, default to empty to prompt choosing another date
-            setSelectedSlot('');
+      if (res && res.ok) {
+        const parsed = await safeParseJsonResponse<{ slots: SlotAvailability[] }>(res);
+        if (parsed.ok && parsed.data) {
+          const rawSlots = parsed.data.slots || [];
+          const fetchedSlots = mergeSlotsWithLocalAppointments(
+            rawSlots.length > 0 ? rawSlots : generateFallbackSlots(targetDate),
+            targetDate
+          );
+          
+          setSlots(fetchedSlots);
+          // Auto-select the first available upcoming valid slot by default when date changes
+          const currentSlotObj = fetchedSlots.find((s: SlotAvailability) => s.slot === selectedSlot);
+          const isCurrentExpired = selectedSlot ? isSlotExpired(selectedSlot, isToday) : true;
+          
+          if (!currentSlotObj || currentSlotObj.isFull || isCurrentExpired) {
+            const firstAvailableUpcoming = fetchedSlots.find((s: SlotAvailability) => {
+              const expired = isSlotExpired(s.slot, isToday);
+              return !s.isFull && !expired;
+            });
+            if (firstAvailableUpcoming) {
+              setSelectedSlot(firstAvailableUpcoming.slot);
+            } else {
+              setSelectedSlot('');
+            }
           }
+          return;
         }
-      } else {
-        const fallback = mergeSlotsWithLocalAppointments(generateFallbackSlots(), targetDate);
-        setSlots(fallback);
-        const firstValid = fallback.find(s => !isSlotExpired(s.slot, isToday));
-        setSelectedSlot(firstValid ? firstValid.slot : '');
       }
+
+      // Fallback calculation
+      const fallback = mergeSlotsWithLocalAppointments(generateFallbackSlots(targetDate), targetDate);
+      setSlots(fallback);
+      const firstValid = fallback.find(s => !isSlotExpired(s.slot, isToday));
+      setSelectedSlot(firstValid ? firstValid.slot : '');
     } catch (err) {
-      console.error('Error fetching slots, falling back to local slots:', err);
-      const fallback = mergeSlotsWithLocalAppointments(generateFallbackSlots(), targetDate);
+      console.warn('[Slots] Using local slots computation:', err);
+      const fallback = mergeSlotsWithLocalAppointments(generateFallbackSlots(targetDate), targetDate);
       setSlots(fallback);
       const isToday = targetDate === todayStr();
       const firstValid = fallback.find(s => !isSlotExpired(s.slot, isToday));
@@ -402,6 +411,13 @@ export const BookingForm: React.FC<BookingFormProps> = memo(({ onAppointmentCrea
           if (parsed.ok && parsed.data) {
             const data = parsed.data;
             setPatientHistory(data);
+            if (data.isReturning) {
+              setVisitType('returning_patient');
+              setFee(200);
+            } else {
+              setVisitType('first_visit');
+              setFee(500);
+            }
             if (data.isReturning && data.patientName && !name.trim()) {
               setName(data.patientName);
             }
@@ -414,15 +430,13 @@ export const BookingForm: React.FC<BookingFormProps> = memo(({ onAppointmentCrea
     }
   }, [phone]);
 
-  const calculatedFee = patientHistory?.isReturning
-    ? CLINIC_INFO.fees.returningPatient // ₹200
-    : CLINIC_INFO.fees.firstVisit; // ₹500
+  const calculatedFee = fee;
 
   // Generate real-time static/live UPI QR Code URI for inline fallback view
   useEffect(() => {
     const upiUri = `upi://pay?pa=${CLINIC_INFO.upiId}&pn=${encodeURIComponent(
       CLINIC_INFO.merchantName
-    )}&am=${calculatedFee}&cu=INR&tn=${encodeURIComponent(`Acupressure Center - ${name.trim() || 'Patient'}`)}`;
+    )}&am=${fee}&cu=INR&tn=${encodeURIComponent(`Acupressure Center - ${name.trim() || 'Patient'}`)}`;
 
     QRCode.toDataURL(upiUri, {
       width: 400,
@@ -435,7 +449,7 @@ export const BookingForm: React.FC<BookingFormProps> = memo(({ onAppointmentCrea
     })
       .then((url) => setInlineQrUrl(url))
       .catch((err) => console.error('Inline UPI QR generation error:', err));
-  }, [calculatedFee, name]);
+  }, [fee, name]);
 
   const handleCopyUpiId = async () => {
     const success = await copyToClipboard(CLINIC_INFO.upiId);
@@ -537,8 +551,8 @@ export const BookingForm: React.FC<BookingFormProps> = memo(({ onAppointmentCrea
       timeSlot: selectedSlot,
       therapy: selectedTherapy,
       condition: selectedCondition?.trim() || 'General Acupressure Consultation',
-      visitType: patientHistory?.isReturning ? 'returning_patient' : 'first_visit',
-      fee: calculatedFee,
+      visitType: visitType,
+      fee: fee,
       paymentMethod: paymentMethod === 'upi_qr' ? 'upi_qr' : 'pay_at_clinic',
       paymentStatus: paymentMethod === 'upi_qr' ? 'paid_online' : 'pending',
       upiReferenceNumber: upiRef?.trim() || undefined,
@@ -636,6 +650,8 @@ export const BookingForm: React.FC<BookingFormProps> = memo(({ onAppointmentCrea
           timeSlot: selectedSlot,
           therapy: selectedTherapy,
           condition: selectedCondition,
+          visitType: visitType,
+          fee: fee,
           paymentMethod,
           reminderChannel,
           upiReferenceNumber: upiRef,
@@ -847,10 +863,73 @@ export const BookingForm: React.FC<BookingFormProps> = memo(({ onAppointmentCrea
                 />
               </div>
 
-              {/* Live phone detection status */}
+              {/* Live phone detection status & Interactive Visit Type Selector */}
               {checkingHistory && (
                 <p className="text-[11px] text-emerald-700 mt-1">Verifying patient record...</p>
               )}
+
+              {/* Visit Type Selector (1st Visit ₹500 vs Returning Visit ₹200) */}
+              <div className="mt-3 space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700">
+                  {language === 'hi' ? 'परामर्श प्रकार (Visit Type) चुनें:' : language === 'hinglish' ? 'Visit Type Select Karein:' : 'Select Patient Visit Type:'}
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleVisitTypeChange('first_visit')}
+                    className={`p-2.5 rounded-xl border text-left transition-all flex items-start gap-2 cursor-pointer ${
+                      visitType === 'first_visit'
+                        ? 'bg-amber-50 border-amber-400 ring-2 ring-amber-400/40 shadow-xs'
+                        : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="patient_visit_type"
+                      checked={visitType === 'first_visit'}
+                      onChange={() => handleVisitTypeChange('first_visit')}
+                      className="mt-0.5 text-amber-600 focus:ring-amber-500"
+                    />
+                    <div>
+                      <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900">
+                        <span>{language === 'hi' ? 'पहला परामर्श (1st Visit)' : '1st Visit (New Patient)'}</span>
+                        <span className="text-[11px] font-black text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded border border-amber-300">₹500</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 leading-tight mt-0.5">
+                        {language === 'hi' ? 'स्थायी पंजीकरण + संपूर्ण जांच + पहला उपचार' : 'Registration + Diagnosis + 1st Session'}
+                      </p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleVisitTypeChange('returning_patient')}
+                    className={`p-2.5 rounded-xl border text-left transition-all flex items-start gap-2 cursor-pointer ${
+                      visitType === 'returning_patient'
+                        ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/40 shadow-xs'
+                        : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="patient_visit_type"
+                      checked={visitType === 'returning_patient'}
+                      onChange={() => handleVisitTypeChange('returning_patient')}
+                      className="mt-0.5 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <div>
+                      <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900">
+                        <span>{language === 'hi' ? 'पुनः आगमन (Returning)' : 'Returning / Follow-up'}</span>
+                        <span className="text-[11px] font-black text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded border border-emerald-300">₹200</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 leading-tight mt-0.5">
+                        {language === 'hi' ? 'पंजीकरण शुल्क माफ + डायरेक्ट थेरेपी सेशन' : 'Registration Waived + Direct Therapy'}
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
               {patientHistory && (
                 <div className={`mt-2 p-2.5 rounded-xl text-xs flex items-center gap-2 ${
                   patientHistory.isReturning
@@ -1274,34 +1353,65 @@ export const BookingForm: React.FC<BookingFormProps> = memo(({ onAppointmentCrea
             <h3>{t('step4Title')}</h3>
           </div>
 
-          {/* Dynamic Fee Banner */}
-          <div className="bg-gradient-to-r from-emerald-50 via-emerald-100/50 to-amber-50/60 border border-emerald-200 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <div className="text-xs text-slate-500 font-medium">
-                {language === 'hi' ? 'कुल उपचार शुल्क' : language === 'hinglish' ? 'Calculated Therapy Fee' : 'Calculated Session Fee'}
+          {/* Dynamic Fee Banner with Visit Type Selector */}
+          <div className="bg-gradient-to-r from-emerald-50 via-emerald-100/50 to-amber-50/60 border border-emerald-200 rounded-2xl p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <div className="text-xs text-slate-500 font-medium">
+                  {language === 'hi' ? 'कुल उपचार शुल्क' : language === 'hinglish' ? 'Calculated Therapy Fee' : 'Calculated Session Fee'}
+                </div>
+                <div className="text-3xl font-black text-emerald-950">
+                  ₹{fee}{' '}
+                  <span className="text-xs font-normal text-slate-600">
+                    {visitType === 'returning_patient' ? (
+                      language === 'hi' ? '(पुनः आगमन - ₹200)' : language === 'hinglish' ? '(Returning Patient - ₹200)' : '(Returning Patient - ₹200)'
+                    ) : (
+                      language === 'hi' ? '(पहला परामर्श + उपचार शुल्क - ₹500)' : language === 'hinglish' ? '(1st Visit + Registration - ₹500)' : '(1st Visit Registration + Therapy - ₹500)'
+                    )}
+                  </span>
+                </div>
+                <div className="text-[11px] text-emerald-800 font-medium mt-0.5">
+                  {visitType === 'returning_patient'
+                    ? (language === 'hi' ? '✓ पंजीकरण शुल्क माफ। थेरेपी परामर्श ₹200 लागू।' : language === 'hinglish' ? '✓ Registration fee waived. Direct therapy ₹200 applied.' : '✓ Registration fee waived. Direct therapy ₹200 applied.')
+                    : (language === 'hi' ? 'इसमें स्थायी डिजिटल रिकॉर्ड, प्रारंभिक परामर्श और संपूर्ण उपचार शामिल है।' : language === 'hinglish' ? 'Isme lifetime digital record, consultation aur full treatment include hai.' : 'Includes lifetime digital record, preliminary consultation, and full treatment.')}
+                </div>
               </div>
-              <div className="text-3xl font-black text-emerald-950">
-                ₹{calculatedFee}{' '}
-                <span className="text-xs font-normal text-slate-600">
-                  {patientHistory?.isReturning ? (
-                    language === 'hi' ? '(पुराना मरीज)' : language === 'hinglish' ? '(Returning Patient)' : '(Returning Patient)'
-                  ) : (
-                    language === 'hi' ? '(पहला परामर्श + उपचार शुल्क)' : language === 'hinglish' ? '(First Visit + Registration)' : '(First Visit Registration + Therapy)'
-                  )}
+
+              <div className="text-right">
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-900 bg-white/80 px-3 py-1.5 rounded-xl border border-emerald-200">
+                  <ShieldCheck className="w-4 h-4 text-emerald-700" />
+                  {language === 'hi' ? 'स्पष्ट शुल्क नियम' : 'Transparent Pricing'}
                 </span>
-              </div>
-              <div className="text-[11px] text-emerald-800 font-medium mt-0.5">
-                {patientHistory?.isReturning
-                  ? (language === 'hi' ? '✓ पुराना रिकॉर्ड सत्यापित। ₹300 पंजीकरण शुल्क माफ किया गया।' : language === 'hinglish' ? '✓ Past visit record mil gaya. ₹300 registration fee maaf.' : '✓ Verified past visit record. ₹300 registration fee waived.')
-                  : (language === 'hi' ? 'इसमें स्थायी डिजिटल रिकॉर्ड, प्रारंभिक परामर्श और संपूर्ण उपचार शामिल है।' : language === 'hinglish' ? 'Isme lifetime digital record, consultation aur full treatment include hai.' : 'Includes lifetime digital record, preliminary consultation, and full treatment.')}
               </div>
             </div>
 
-            <div className="text-right">
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-900 bg-white/80 px-3 py-1.5 rounded-xl border border-emerald-200">
-                <ShieldCheck className="w-4 h-4 text-emerald-700" />
-                {language === 'hi' ? 'स्पष्ट शुल्क नियम' : 'Transparent Pricing'}
+            {/* Quick Visit Type Toggle inside Step 4 */}
+            <div className="pt-2 border-t border-emerald-200/60 flex items-center gap-2">
+              <span className="text-[11px] font-bold text-slate-600">
+                {language === 'hi' ? 'प्रकार बदलें:' : 'Change Visit Type:'}
               </span>
+              <button
+                type="button"
+                onClick={() => handleVisitTypeChange('first_visit')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  visitType === 'first_visit'
+                    ? 'bg-amber-500 text-slate-950 shadow-xs'
+                    : 'bg-white/80 text-slate-700 hover:bg-white border border-slate-200'
+                }`}
+              >
+                1st Visit (₹500)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleVisitTypeChange('returning_patient')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  visitType === 'returning_patient'
+                    ? 'bg-emerald-700 text-white shadow-xs'
+                    : 'bg-white/80 text-slate-700 hover:bg-white border border-slate-200'
+                }`}
+              >
+                Returning (₹200)
+              </button>
             </div>
           </div>
 

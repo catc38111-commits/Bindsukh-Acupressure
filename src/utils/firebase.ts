@@ -65,41 +65,9 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
-  console.error('[Firestore Error]:', JSON.stringify(errInfo));
+  console.warn('[Firestore Error]:', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
-
-let isTestingConnection = false;
-export async function testFirestoreConnection(): Promise<boolean> {
-  if (isTestingConnection) return true;
-  isTestingConnection = true;
-  try {
-    // Attempt reading a test doc to verify connection with a short 3-second timeout
-    const connectionPromise = getDocFromServer(doc(db, 'test', 'connection'));
-    const timeoutPromise = new Promise<never>((_, reject) => 
-      setTimeout(() => reject(new Error('Connection check timeout')), 3000)
-    );
-    
-    await Promise.race([connectionPromise, timeoutPromise]);
-    console.log('[Firestore] Live connection verified successfully.');
-    return true;
-  } catch (error) {
-    console.warn('[Firestore] Outbound network connection is offline or restricted inside preview iframe. Switching to offline mode gracefully.');
-    try {
-      await disableNetwork(db);
-    } catch (e) {
-      console.warn('[Firestore] Failed to disable network traffic:', e);
-    }
-    return false;
-  } finally {
-    isTestingConnection = false;
-  }
-}
-
-// Auto test on module load - deferred to prevent blocking the main thread
-setTimeout(() => {
-  testFirestoreConnection().catch(() => {});
-}, 1500);
 
 // Sign in anonymously for seamless security
 export async function ensureAuth(): Promise<User | null> {
@@ -111,6 +79,11 @@ export async function ensureAuth(): Promise<User | null> {
     console.warn('[Firebase Auth] Anonymous sign-in note:', err);
     return null;
   }
+}
+
+// Safe connection indicator without invasive probe
+export async function testFirestoreConnection(): Promise<boolean> {
+  return typeof window !== 'undefined' && !!db;
 }
 
 // Save appointment directly to Firestore

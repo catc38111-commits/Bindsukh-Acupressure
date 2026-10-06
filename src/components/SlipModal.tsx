@@ -8,15 +8,13 @@ import {
   generateAndDownloadReceiptPdf,
   downloadReceiptAsImage,
   openPrintableReceiptWindow,
-  renderElementToCanvasImage,
-  printReceiptSlip
+  renderElementToCanvasImage
 } from '../utils/receiptPdfHelper';
 import {
   Calendar,
   CalendarCheck,
   CalendarPlus,
   Check,
-  CheckCircle2,
   Clock,
   Download,
   ExternalLink,
@@ -29,16 +27,16 @@ import {
   X,
   FileDown,
   Loader2,
-  Image
+  Image as ImageIcon
 } from 'lucide-react';
 
-interface AppointmentReceiptModalProps {
+interface SlipModalProps {
   appointment: PatientAppointment | null;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export const AppointmentReceiptModal: React.FC<AppointmentReceiptModalProps> = ({
+export const SlipModal: React.FC<SlipModalProps> = ({
   appointment,
   isOpen,
   onClose,
@@ -51,6 +49,9 @@ export const AppointmentReceiptModal: React.FC<AppointmentReceiptModalProps> = (
   const [calendarSuccess, setCalendarSuccess] = useState(false);
 
   if (!isOpen || !appointment) return null;
+
+  // Dynamic fee calculation: never hardcode ₹500
+  const displayFee = appointment.fee || (appointment.visitType === 'returning_patient' ? 200 : 500);
 
   const handleDownloadSlip = async () => {
     if (!appointment) return;
@@ -98,56 +99,61 @@ export const AppointmentReceiptModal: React.FC<AppointmentReceiptModalProps> = (
     try {
       const imgDataUrl = await renderElementToCanvasImage('printable-slip-wrapper');
       openPrintableReceiptWindow(appointment, imgDataUrl || undefined);
-    } catch (e) {
-      printReceiptSlip('printable-slip-wrapper');
+    } catch (err) {
+      console.error('Error printing receipt:', err);
+      openPrintableReceiptWindow(appointment);
     }
   };
 
-  const handleShareWhatsApp = () => {
-    const text = `*Bindsukh Acupressure & Acupuncture Center*
-Token No: ${appointment.tokenNumber}
-Patient: ${appointment.patientName}
-Date: ${appointment.appointmentDate}
-Time: ${appointment.timeSlot}
-Therapy: ${appointment.therapy}
-Fee: ₹${appointment.fee} (${appointment.paymentStatus === 'paid_online' ? 'Paid via UPI' : 'Pay at Clinic'})
-Address: ${CLINIC_INFO.address}
-Doctor: ${CLINIC_INFO.leadPractitioner}`;
-
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  const handleWhatsAppShare = () => {
+    if (!appointment) return;
+    const msg = encodeURIComponent(
+      `*Bindsukh Clinic Appointment Token Slip*\n\n` +
+      `📋 Token: ${appointment.tokenNumber}\n` +
+      `👤 Patient: ${appointment.patientName}\n` +
+      `📅 Date: ${appointment.appointmentDate}\n` +
+      `⏰ Time Slot: ${appointment.timeSlot}\n` +
+      `🌿 Therapy: ${appointment.therapy}\n` +
+      `💰 Fee: ₹${displayFee} (${appointment.paymentStatus === 'paid_online' ? 'PAID UPI' : 'Pay at Clinic'})\n` +
+      `📍 Location: Puramufti Purani Bazar, Prayagraj\n` +
+      `📞 Helpline: +91 9455100097`
+    );
+    window.open(`https://wa.me/?text=${msg}`, '_blank');
   };
 
   return (
-    <div id="receipt-modal-overlay" className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto no-print">
-      <div id="receipt-modal-container" className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-emerald-900/15 overflow-hidden my-6">
-        
-        {/* Printable Card Area Captured into High-Res PDF */}
+    <div
+      id="receipt-modal-overlay"
+      className="fixed inset-0 z-[9990] flex items-center justify-center p-3 sm:p-4 bg-black/65 backdrop-blur-md overflow-y-auto no-print animate-in fade-in duration-200"
+    >
+      <div
+        id="receipt-modal-container"
+        className="bg-white rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden border border-slate-200 relative my-auto animate-in zoom-in-95 duration-200"
+      >
+        {/* Close Button */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 z-20 text-white/80 hover:text-white bg-black/30 hover:bg-black/50 p-2 rounded-full transition-colors cursor-pointer"
+          title="Close slip modal"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        {/* Printable Pass Container */}
         <div id="printable-slip-wrapper" className="bg-white">
-          {/* Receipt Header */}
-          <div className="bg-gradient-to-r from-emerald-950 to-emerald-800 text-white p-5 text-center relative">
-            <button
-              id="close-receipt-btn"
-              onClick={onClose}
-              className="absolute right-4 top-4 text-emerald-200 hover:text-white p-1 rounded-lg hover:bg-emerald-700/50 transition-colors no-print"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            
-            <div className="flex flex-col items-center">
-              <div className="relative mb-2">
+          {/* Header Strip with Clinic Brand */}
+          <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-950 text-white p-6 relative overflow-hidden text-center">
+            <div className="relative z-10 flex flex-col items-center">
+              {clinicLogo && (
                 <img
                   src={clinicLogo}
-                  alt="Bindsukh Clinic Official Logo Seal"
-                  referrerPolicy="no-referrer"
-                  className="w-16 h-16 sm:w-18 sm:h-18 rounded-full object-cover border-2 border-emerald-500 shadow-lg"
+                  alt={CLINIC_INFO.name}
+                  className="w-14 h-14 rounded-full border-2 border-amber-300 shadow-md mb-2 object-cover"
                 />
-                <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 bg-amber-400 text-emerald-950 text-[9px] font-black rounded-full border border-white shadow-xs">
-                  SEAL
-                </span>
-              </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-400/20 text-amber-300 rounded-full text-xs font-semibold mb-1 border border-amber-400/30">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Booking Confirmed • आधिकारिक रसीद पर्ची
+              )}
+              <div className="inline-block px-3 py-0.5 rounded-full bg-emerald-800/80 text-[10px] font-bold text-amber-300 border border-emerald-700/60 mb-1">
+                Official Token Slip • आधिकारिक रसीद पर्ची
               </div>
               <h2 className="text-lg font-bold font-serif">{CLINIC_INFO.name}</h2>
               <p className="text-xs text-amber-300 font-medium tracking-wide">{CLINIC_INFO.taglineHindi}</p>
@@ -155,7 +161,7 @@ Doctor: ${CLINIC_INFO.leadPractitioner}`;
             </div>
           </div>
 
-          {/* Printable Pass Content */}
+          {/* Printable Slip Body */}
           <div id="printable-slip" className="p-6 space-y-4">
             {/* Token Card */}
             <div className="bg-emerald-50 border-2 border-dashed border-emerald-300 rounded-xl p-4 text-center">
@@ -206,6 +212,7 @@ Doctor: ${CLINIC_INFO.leadPractitioner}`;
                   <span className="text-slate-700 font-medium">{appointment.condition}</span>
                 </div>
               )}
+              {/* Dynamic Fee Line */}
               <div className="p-3 flex justify-between items-center bg-slate-50/50">
                 <div>
                   <span className="text-slate-600 font-semibold block">Consultation & Therapy Fee</span>
@@ -214,9 +221,7 @@ Doctor: ${CLINIC_INFO.leadPractitioner}`;
                   </span>
                 </div>
                 <div className="text-right">
-                  <span className="text-base font-extrabold text-emerald-900 font-mono">
-                    ₹{appointment.fee || (appointment.visitType === 'returning_patient' ? 200 : 500)}
-                  </span>
+                  <span className="text-base font-extrabold text-emerald-900 font-mono">₹{displayFee}</span>
                   <span className={`block text-[10px] font-bold ${
                     appointment.paymentStatus === 'paid_online' || appointment.paymentStatus === 'collected_at_clinic'
                       ? 'text-emerald-700'
@@ -241,7 +246,7 @@ Doctor: ${CLINIC_INFO.leadPractitioner}`;
           </div>
         </div>
 
-        {/* Calendar Reminder & .ics Invitation Section */}
+        {/* Calendar Reminder & Actions */}
         <div className="p-6 pt-0 space-y-4">
           <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-xl p-3.5 space-y-2.5">
             <div className="flex items-center justify-between">
@@ -253,16 +258,11 @@ Doctor: ${CLINIC_INFO.leadPractitioner}`;
                 .ics Invite
               </span>
             </div>
-            <p className="text-[11px] text-slate-600 leading-relaxed">
-              कैलेंडर इन्विटेशन (.ics) डाउनलोड करें ताकि आपके फोन पर अपॉइंटमेंट से 2 घंटे और 24 घंटे पहले स्वतः अलार्म व नोटिफिकेशन आए।
-            </p>
             <div className="flex flex-wrap items-center gap-2 pt-0.5">
               <button
-                id="download-ics-card-btn"
                 type="button"
                 onClick={handleDownloadCalendar}
                 className="flex-1 min-w-[140px] inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-emerald-800 hover:bg-emerald-900 active:scale-95 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
-                title="Download .ics calendar invitation file for Apple / Google / Outlook Calendar"
               >
                 {calendarSuccess ? (
                   <>
@@ -272,7 +272,7 @@ Doctor: ${CLINIC_INFO.leadPractitioner}`;
                 ) : (
                   <>
                     <CalendarPlus className="w-4 h-4 text-amber-300" />
-                    <span>कैलेंडर फ़ाइल (.ics) डाउनलोड करें</span>
+                    <span>कैलेंडर फ़ाइल (.ics)</span>
                   </>
                 )}
               </button>
@@ -281,7 +281,6 @@ Doctor: ${CLINIC_INFO.leadPractitioner}`;
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
-                title="Add directly to Google Calendar online"
               >
                 <ExternalLink className="w-3.5 h-3.5 text-emerald-700" />
                 <span>Google Calendar</span>
@@ -293,70 +292,64 @@ Doctor: ${CLINIC_INFO.leadPractitioner}`;
         {/* Modal Actions */}
         <div className="bg-slate-50 p-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 no-print">
           <button
-            id="download-slip-btn"
             type="button"
             disabled={isGeneratingPdf}
             onClick={handleDownloadSlip}
             className="flex-1 min-w-[125px] inline-flex items-center justify-center gap-1.5 py-2.5 px-3 bg-emerald-800 hover:bg-emerald-900 active:scale-95 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-75"
-            title="Download official PDF token receipt slip to device"
           >
             {isGeneratingPdf ? (
               <>
-                <Loader2 className="w-4 h-4 text-amber-300 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin text-amber-300" />
                 <span>Generating PDF...</span>
               </>
             ) : downloadSuccess ? (
               <>
                 <Check className="w-4 h-4 text-amber-300" />
-                <span>PDF Saved!</span>
+                <span>PDF Downloaded!</span>
               </>
             ) : (
               <>
                 <FileDown className="w-4 h-4 text-amber-300" />
-                <span>Download PDF</span>
+                <span>PDF Slip</span>
               </>
             )}
           </button>
 
-          {/* Direct Image Download Button for WebViews */}
           <button
-            id="download-image-slip-btn"
             type="button"
             disabled={isGeneratingImg}
             onClick={handleDownloadImage}
-            className="flex-1 min-w-[120px] inline-flex items-center justify-center gap-1.5 py-2.5 px-3 bg-amber-500 hover:bg-amber-600 active:scale-95 text-emerald-950 font-black rounded-xl text-xs transition-all shadow-xs cursor-pointer disabled:opacity-75"
-            title="Download receipt card as PNG image for Android WebViews"
+            className="flex-1 min-w-[125px] inline-flex items-center justify-center gap-1.5 py-2.5 px-3 bg-amber-500 hover:bg-amber-600 active:scale-95 text-emerald-950 rounded-xl text-xs font-black transition-all shadow-md cursor-pointer disabled:opacity-75"
           >
             {isGeneratingImg ? (
               <>
-                <Loader2 className="w-4 h-4 text-emerald-950 animate-spin" />
-                <span>Creating Image...</span>
+                <Loader2 className="w-4 h-4 animate-spin text-emerald-950" />
+                <span>Generating Image...</span>
               </>
             ) : (
               <>
-                <Image className="w-4 h-4 text-emerald-950 stroke-[2.5]" />
-                <span>Save Image (फोटो पर्चा)</span>
+                <ImageIcon className="w-4 h-4 text-emerald-950" />
+                <span>Image Slip</span>
               </>
             )}
           </button>
 
           <button
-            id="print-receipt-btn"
             type="button"
-            onClick={handlePrint}
-            className="flex-1 min-w-[90px] inline-flex items-center justify-center gap-1.5 py-2.5 px-3 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
-            title="Open clean printable receipt view or print dialog"
+            onClick={handleWhatsAppShare}
+            className="p-2.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 rounded-xl transition-colors cursor-pointer border border-emerald-300"
+            title="Share token slip on WhatsApp"
           >
-            <Printer className="w-4 h-4 text-amber-300" /> Print / View
+            <Share2 className="w-4 h-4" />
           </button>
 
           <button
-            id="share-whatsapp-btn"
             type="button"
-            onClick={handleShareWhatsApp}
-            className="flex-1 min-w-[80px] inline-flex items-center justify-center gap-1.5 py-2.5 px-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+            onClick={handlePrint}
+            className="p-2.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl transition-colors cursor-pointer"
+            title="Print appointment slip"
           >
-            <Share2 className="w-3.5 h-3.5" /> Share
+            <Printer className="w-4 h-4" />
           </button>
         </div>
       </div>

@@ -156,39 +156,48 @@ export const CONDITIONS_TREATED: ConditionTreated[] = [
 ];
 
 export const WEEKDAY_SLOTS = [
+  '08:30 AM - 09:30 AM',
+  '09:30 AM - 10:30 AM',
+  '10:30 AM - 11:30 AM',
+  '11:30 AM - 12:30 PM',
+  '12:30 PM - 01:30 PM',
+  '01:30 PM - 02:30 PM',
+  '02:30 PM - 03:30 PM',
+  '03:00 PM - 04:00 PM',
+];
+
+export const SUNDAY_SLOTS = [
   '08:00 AM - 09:00 AM',
   '09:00 AM - 10:00 AM',
   '10:00 AM - 11:00 AM',
   '11:00 AM - 12:00 PM',
-  '12:00 PM - 01:00 PM',
-  '01:00 PM - 02:00 PM',
-  '02:00 PM - 03:00 PM',
-  '03:00 PM - 04:00 PM',
 ];
 
-export const SUNDAY_SLOTS = [...WEEKDAY_SLOTS];
-
 export function getSlotsForDate(dateStr?: string): string[] {
-  return WEEKDAY_SLOTS;
+  if (!dateStr) return WEEKDAY_SLOTS;
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  const dayOfWeek = d.getDay(); // 0 is Sunday
+  return dayOfWeek === 0 ? SUNDAY_SLOTS : WEEKDAY_SLOTS;
 }
 
 export function normalizeTimeSlot(rawSlot: string): string {
   if (!rawSlot) return WEEKDAY_SLOTS[0];
   const trimmed = rawSlot.trim();
   
-  if (WEEKDAY_SLOTS.includes(trimmed)) {
+  if (WEEKDAY_SLOTS.includes(trimmed) || SUNDAY_SLOTS.includes(trimmed)) {
     return trimmed;
   }
   
   const legacyMap: Record<string, string> = {
-    '08:30 AM - 09:30 AM': '08:00 AM - 09:00 AM',
-    '09:30 AM - 10:30 AM': '09:00 AM - 10:00 AM',
-    '10:30 AM - 11:30 AM': '10:00 AM - 11:00 AM',
-    '11:30 AM - 12:30 PM': '11:00 AM - 12:00 PM',
-    '12:30 PM - 01:30 PM': '12:00 PM - 01:00 PM',
-    '01:30 PM - 02:30 PM': '01:00 PM - 02:00 PM',
-    '02:30 PM - 03:30 PM': '02:00 PM - 03:00 PM',
-    '03:30 PM - 04:30 PM': '03:00 PM - 04:00 PM',
+    '08:00 AM - 09:00 AM': '08:30 AM - 09:30 AM',
+    '09:00 AM - 10:00 AM': '09:30 AM - 10:30 AM',
+    '10:00 AM - 11:00 AM': '10:30 AM - 11:30 AM',
+    '11:00 AM - 12:00 PM': '11:30 AM - 12:30 PM',
+    '12:00 PM - 01:00 PM': '12:30 PM - 01:30 PM',
+    '01:00 PM - 02:00 PM': '01:30 PM - 02:30 PM',
+    '02:00 PM - 03:00 PM': '02:30 PM - 03:30 PM',
+    '03:00 PM - 04:00 PM': '03:00 PM - 04:00 PM',
   };
   
   return legacyMap[trimmed] || trimmed;

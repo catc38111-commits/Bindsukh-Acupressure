@@ -4,6 +4,7 @@ import { useClinicLogo } from '../utils/logoHelper';
 import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
 import { useLanguage } from '../context/LanguageContext';
 import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
+import { sendChatMessage } from '../services/chatService';
 import {
   Bot,
   Calendar,
@@ -285,38 +286,19 @@ export const AiCareAssistantModal: React.FC<AiCareAssistantModalProps> = ({
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: textToSend,
-          language: language,
-          history: messages.slice(-6).map((m) => ({
-            role: m.sender === 'user' ? 'user' : 'model',
-            text: m.text
-          }))
-        })
+      const chatRes = await sendChatMessage({
+        message: textToSend,
+        language: language as 'en' | 'hi' | 'hinglish',
+        history: messages.slice(-6).map((m) => ({
+          role: m.sender === 'user' ? 'user' : 'model',
+          text: m.text
+        }))
       });
 
-      if (!response.ok) {
-        throw new Error(`Server responded with ${response.status}`);
-      }
-
-      const data = await response.json();
-      let replyText = data.reply || '';
+      let replyText = chatRes.reply || '';
 
       if (!replyText) {
         replyText = generateFallbackReply(textToSend);
-      }
-
-      let actionType: 'book' | 'call' | 'map' | undefined = 'book';
-      const lower = replyText.toLowerCase();
-      if (lower.includes('मैप') || lower.includes('पता') || lower.includes('location') || lower.includes('address') || lower.includes('rasta')) {
-        actionType = 'map';
-      } else if (lower.includes('कॉल') || lower.includes('फोन') || lower.includes('helpline') || lower.includes('call')) {
-        actionType = 'call';
-      } else {
-        actionType = 'book';
       }
 
       const assistantMsg: ChatMessage = {
@@ -324,7 +306,7 @@ export const AiCareAssistantModal: React.FC<AiCareAssistantModalProps> = ({
         sender: 'assistant',
         text: replyText,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        actionType
+        actionType: chatRes.actionType || 'book'
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
@@ -382,7 +364,7 @@ export const AiCareAssistantModal: React.FC<AiCareAssistantModalProps> = ({
       q.includes('stroke') || q.includes('पक्षाघात') || q.includes('moch') ||
       q.includes('मोच') || q.includes('sprain') || q.includes('haddi dard') ||
       q.includes('हड्डी में दर्द') || q.includes('cp child') || q.includes('सीपी') ||
-      q.includes('cerebral palsy');
+      q.includes('cerebral palsy') || q.includes('pair') || q.includes('पैर') || q.includes('leg');
 
     const greetingPhrases = [
       'hi', 'hello', 'namaste', 'namaskar', 'pranam', 'pranaam', 'hey', 'helo', 'hallo', 'greetings',
@@ -427,41 +409,34 @@ export const AiCareAssistantModal: React.FC<AiCareAssistantModalProps> = ({
       return "नमस्ते! 🙏 मैं बहुत अच्छा हूँ, पूछने के लिए धन्यवाद। बिंदसुख एक्यूप्रेशर एवं एक्यूपंक्चर सेंटर में आपका हार्दिक स्वागत है! आज मैं आपकी क्या सहायता कर सकता हूँ?\n\nआप क्लिनिक समय, परामर्श शुल्क (पहली बार ₹500 / दोबारा ₹200), थैरेपी या किसी भी शारीरिक परेशानी के बारे में पूछ सकते हैं।";
     }
 
-    // Common caution & clinic footer according to language
-    const cautionText = isEnglish
-      ? 'If these home remedies do not provide relief in 10-15 minutes or if the condition persists, please visit our clinic for permanent, 100% drugless healing.'
-      : isHinglish
-      ? 'Agar 10-15 minute me aaram na mile ya dard lagatar bana rahe, toh bina dawa permanent ilaj ke liye clinic aayein.'
-      : 'अगर 10-15 मिनट में आराम न मिले या दर्द लगातार बना रहे, तो बिना दवा permanent इलाज के लिए क्लीनिक आएं।';
-
     const clinicFooter = isEnglish
-      ? `🏥 **3. Clinic Contact & Appointment Guide:**
+      ? `🏥 **4. Clinic Consultation & Long-Term Solution:**
 Consult Therapist Saurabh Prajapati (Master in Acupressure & Acupuncture) for 100% drugless permanent relief.
-• **Timing:** 8:30 AM to 4:00 PM (Monday - Saturday) | Sunday Morning 8:30 AM - 12:00 PM
+• **Timing:** 8:30 AM to 4:00 PM (Monday - Saturday) | Sunday Morning 8:00 AM - 12:00 PM
 • **Fee:** ₹500 (1st Visit) / ₹200 (Returning Patient)
 • **Address:** Puramufti Purani Bazar, Prayagraj (Near Panchayat Bhawan)
-• **Direct Call/WhatsApp:** +91 9455110097 / +91 9455100097
+• **Helpline / WhatsApp:** +91 9455100097 / +91 8423221799
 
 👉 **[Book Appointment Now]**`
       : isHinglish
-      ? `🏥 **3. Clinic Contact & Appointment Guide:**
+      ? `🏥 **4. Clinic Consultation & Permanent Ilaj:**
 Therapist Saurabh Prajapati (Master in Acupressure & Acupuncture) dwara bina dawa ke permanent treatment kiya jata hai.
-• **Timing:** 8:30 AM to 4:00 PM (Monday - Saturday) | Sunday Morning 8:30 AM - 12:00 PM
-• **Fee:** ₹500 (1st Visit) / ₹200 (Returning)
+• **Timing:** 8:30 AM to 4:00 PM (Monday - Saturday) | Sunday Morning 8:00 AM - 12:00 PM
+• **Fee:** ₹500 (1st Visit) / ₹200 (Follow-up)
 • **Address:** Puramufti Purani Bazar, Prayagraj (Near Panchayat Bhawan)
-• **Direct Call/WhatsApp:** +91 9455110097
+• **Helpline / WhatsApp:** +91 9455100097
 
 👉 **[Book Appointment Now]**`
-      : `🏥 **3. क्लिनिक संपर्क व परामर्श गाइड (Clinic Guide):**
+      : `🏥 **4. क्लिनिक परामर्श एवं स्थायी समाधान (Clinic Consultation):**
 थेरेपिस्ट सौरभ प्रजापति जी (Master in Acupressure & Acupuncture) द्वारा 100% ड्रगलेस स्थायी उपचार किया जाता है।
-• **समय:** सुबह 8:30 AM से शाम 4:00 PM (सोम-शनि) | रविवार सुबह 8:30 AM - 12:00 PM
+• **समय:** सुबह 8:30 AM से शाम 4:00 PM (सोम-शनि) | रविवार सुबह 8:00 AM - 12:00 PM
 • **फीस:** ₹500 (पहली बार) / ₹200 (दोबारा)
 • **पता:** पुरामुफ्ती पुरानी बाजार, प्रयागराज (पंचायत भवन के पास)
-• **हेल्पलाइन / WhatsApp:** +91 9455110097
+• **हेल्पलाइन / WhatsApp:** +91 9455100097
 
 👉 **[Book Appointment Now]**`;
 
-    // 1. Headache / Sir Dard / Sar Dard / Migraine
+    // 1. Headache / Sir Dard / Migraine
     const isHeadache =
       q.includes('सिरदर्द') || q.includes('सरदर्द') || q.includes('सर दर्द') ||
       q.includes('सिर दर्द') || q.includes('सिर में दर्द') || q.includes('सर में दर्द') ||
@@ -472,319 +447,362 @@ Therapist Saurabh Prajapati (Master in Acupressure & Acupuncture) dwara bina daw
 
     if (isHeadache) {
       if (isEnglish) {
-        return `💡 **1. Immediate Short Solution / Home Remedies (Headache & Migraine):**
-• **LI4 Acupressure Point (Hegu):** Press the highest spot of the muscle between your thumb and index finger firmly for 2-3 minutes. This immediately relieves cranial tension and headache.
-• **Hydration & Rest:** Drink a glass of warm water, step away from screens for 15 minutes, and place a cool compress on your forehead in a dim room.
+        return `❤️ **1. Empathetic Acknowledgment:**
+I am so sorry you are suffering from a headache/migraine. We understand how exhausting and debilitating head pain can be.
 
-⚠️ **2. Important Caution:**
-${cautionText}
+🌿 **2. How Acupressure & Acupuncture Relieve It:**
+Acupressure clears cranial nerve tension and restores micro-vascular blood circulation to the brain without any painkiller pills. Stimulating specific meridians releases natural endorphins that calm brain nerve hyperactivity permanently.
+
+💡 **3. Safe Home Relief Tip:**
+• **LI4 (He Gu Point):** Firmly press the webbed muscle between your thumb and index finger for 2-3 minutes on both hands.
+• Drink a glass of warm water and rest in a dim room with eyes closed for 15 minutes.
 
 ${clinicFooter}`;
       }
       if (isHinglish) {
-        return `💡 **1. Immediate Short Solution / Home Remedies (Sir Dard & Migraine):**
-• **LI4 Acupressure Point (Hegu Point):** Angoothe aur index finger ke beech ke ubhre hue masal hisse ko 2-3 minute achhi tarah dabayein. Isse sir ki naso ko turant aaram milta hai.
-• **Garam Paani & Thandi Senk:** 1 glass gunguna paani piyein, 15 minute screen se door rahein aur maathe par geela/thanda kapda rakhkar aaram karein.
+        return `❤️ **1. Hamari Sahanoobhuti:**
+Humein bohot dukh hai ki aap sir dard ya migraine se pareshan hain. Sir dard insaan ko bechain aur thaka deta hai.
 
-⚠️ **2. Important Caution:**
-${cautionText}
+🌿 **2. Acupressure Kaise Aaram Deta Hai:**
+Acupressure aur Acupuncture bina kisi dawa ke sir ki dabi hui naso aur blood circulation ko normal karte hain. Isse cranial tension turant release hoti hai aur migraine me permanent aaram milta hai.
+
+💡 **3. Turant Gharelu Upchar:**
+• **LI4 Point (He Gu):** Apne hath ke angoothe aur index finger ke beech ke masal hisse ko 2-3 minute achhe se dabayein.
+• Ek glass gunguna paani piyein aur 15 minute screen se door shaant kamre me aaram karein.
 
 ${clinicFooter}`;
       }
-      return `💡 **1. तुरंत आराम के लिए 2 सरल उपाय / एक्यूप्रेशर बिंदु (Immediate Home Remedies):**
-• **LI4 एक्यूप्रेशर बिंदु (हेगु पॉइंट):** अपने हाथ के अंगूठे और तर्जनी (Index finger) के बीच के उभरे हुए मांसल हिस्से को 2-3 मिनट गहरे दबाव के साथ दबाएं। इससे सिर की नसों को तुरंत शांति व आराम मिलता है।
-• **हाइड्रेशन व विश्राम:** 1 गिलास गुनगुना पानी पिएं, मोबाइल/स्क्रीन से 15 मिनट दूरी बनाएं और माथे पर हल्का ठंडा या गीला कपड़ा रखकर आंखें बंद करके शांत लेटें।
+      return `❤️ **1. सहानुभूतिपूर्ण समझ (Empathetic Care):**
+हमें बहुत खेद है कि आप सिरदर्द / माइग्रेन की पीड़ा से जूझ रहे हैं। सिर का दर्द सचमुच बहुत कष्टदायक और थका देने वाला होता है।
 
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-${cautionText}
+🌿 **2. एक्यूप्रेशर एवं एक्यूपंक्चर द्वारा प्राकृतिक समाधान:**
+एक्यूप्रेशर बिना किसी पेनकिलर के सिर की तनावग्रस्त नसों में रक्त संचार को सुचारू करता है। विशिष्ट मेरिडियन पॉइंट्स पर दबाव देकर प्राकृतिक एंडोर्फिन सक्रिय होता है, जिससे सिरदर्द जड़ से शांत होता है।
+
+💡 **3. तुरंत आराम के लिए सरल घरेलू उपाय:**
+• **LI4 एक्यूप्रेशर पॉइंट (हेगु बिंदु):** अपने अंगूठे और तर्जनी उंगली के बीच के उभरे हुए मांसल भाग को 2-3 मिनट गहरे दबाव के साथ दबाएं।
+• 1 गिलास गुनगुना पानी पिएं और 15 मिनट मोबाइल/स्क्रीन से दूर शांत लेटें।
 
 ${clinicFooter}`;
     }
 
-    // 2. Knee Pain & Arthritis
-    if (q.includes('घुटने') || q.includes('घुटना') || q.includes('घुटनों') || q.includes('knee') || q.includes('ghutna') || q.includes('ghutne') || q.includes('गठिया') || q.includes('arthritis') || q.includes('joint')) {
+    // 2. Knee Pain & Arthritis / Joint Pain
+    if (q.includes('घुटने') || q.includes('घुटना') || q.includes('घुटनों') || q.includes('knee') || q.includes('ghutna') || q.includes('ghutne') || q.includes('गठिया') || q.includes('arthritis') || q.includes('joint') || q.includes('जोड़ों')) {
       if (isEnglish) {
-        return `💡 **1. Immediate Short Solution / Home Remedies (Knee Pain & Arthritis):**
-• **ST-35 Knee Acupressure (Eye of the Knee):** Gently press the indentations just below both sides of the knee cap with your thumbs for 1-2 minutes in circular motions.
-• **Warm Oil Compress & Gentle Movement:** Gently massage warm mustard or sesame oil with fenugreek seeds around the knee, followed by warm fomentation for 10 minutes. Slowly straighten and bend knee 5-10 times.
+        return `❤️ **1. Empathetic Acknowledgment:**
+We truly understand how difficult knee pain and joint stiffness make walking and daily movements.
 
-⚠️ **2. Important Caution & Next Step:**
-${cautionText}
+🌿 **2. How Acupressure & Holistic Therapy Help:**
+Therapy stimulates synovial fluid circulation around the knee joint, reduces inflammation, and relieves pressure on cartilage without surgeries or injections.
+
+💡 **3. Safe Home Relief Tip:**
+• **Eye of the Knee (ST-35):** Gently press the two indentations just below your kneecap with your thumbs in circular motions for 2 minutes.
+• Apply warm mustard or sesame oil with fenugreek, followed by 10 minutes of gentle warm towel fomentation.
 
 ${clinicFooter}`;
       }
       if (isHinglish) {
-        return `💡 **1. Immediate Short Solution / Home Remedies (Ghutne Ka Dard):**
-• **Knee Acupressure Point (Eye of the Knee):** Ghutne ki katori ke dono kinaron ke gaddhon ko angoothe se 1-2 minute halke pressure ke sath dabayein.
-• **Garam Tel Ki Malish:** Gungune sarson ya til ke tel se ghutne ke aaspas halke haath se malish karein aur 10 minute garam kapde se senk lein. Chair par baithkar pair ko dheere-dheere aage seedha karein aur modein.
+        return `❤️ **1. Hamari Sahanoobhuti:**
+Ghutno ke dard ya gathiya ki wajah se chalne-phirne me hone wali takleef ko hum achhi tarah samajhte hain.
 
-⚠️ **2. Important Caution & Next Step:**
-${cautionText}
+🌿 **2. Acupressure Kaise Aaram Deta Hai:**
+Acupressure ghutne ke aaspas blood circulation badhata hai aur joints ke beech ke friction/inflammation ko bina injection ya surgery ke natural tarike se theek karta hai.
+
+💡 **3. Turant Gharelu Upchar:**
+• **Knee Points (ST-35):** Ghutne ki katori ke dono taraf ke gaddho ko 2 minute angoothe se gol ghumate hue dabayein.
+• Gungune sarson ya til ke tel se halke hath se malish karein aur 10 minute garam kapde se senk lein.
 
 ${clinicFooter}`;
       }
-      return `💡 **1. तुरंत आराम के लिए 2 सरल उपाय / एक्यूप्रेशर बिंदु (Immediate Short Solution):**
-• **ST-35 घुटने का एक्यूप्रेशर (Eye of the Knee):** घुटने की कटोरी (Knee Cap) के दोनों किनारों के गड्ढों को अंगूठे से 1-2 मिनट हल्के दबाव के साथ गोल घुमाते हुए दबाएं।
-• **हल्की गरम सिंकाई व मूवमेंट:** सरसों या तिल के तेल में मेथी दाना पकाकर घुटनों पर हल्के हाथ से मालिश करें और 10 मिनट गरम तौलिये से सेकें। कुर्सी पर बैठकर पैर को धीरे-धीरे आगे सीधा करें और फिर मोड़ें।
+      return `❤️ **1. सहानुभूतिपूर्ण समझ (Empathetic Care):**
+हम समझते हैं कि घुटनों के दर्द या गठिया के कारण उठने-बैठने और चलने में कितनी परेशानी होती है।
 
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-${cautionText}
+🌿 **2. एक्यूप्रेशर द्वारा प्राकृतिक समाधान:**
+एक्यूप्रेशर और मैग्नेट थैरेपी घुटने के जोड़ों में साइनोवियल फ्लूइड और रक्त प्रवाह को सक्रिय करती है, जिससे बिना ऑपरेशन व बिना पेनकिलर के सूजन और घिसाव का प्राकृतिक उपचार होता है।
+
+💡 **3. तुरंत आराम के लिए सरल घरेलू उपाय:**
+• **ST-35 घुटने का एक्यूप्रेशर:** घुटने की कटोरी के ठीक नीचे दोनों तरफ के गड्ढों को 2 मिनट अंगूठों से गोल घुमाते हुए दबाएं।
+• मेथी दाना मिले गुनगुने सरसों तेल से हल्के हाथ से मालिश करें और 10 मिनट गरम तौलिये से सेंकें।
 
 ${clinicFooter}`;
     }
 
     // 3. Back Pain & Slip Disc
-    if (q.includes('कमर') || q.includes('back') || q.includes('kamar') || q.includes('disc') || q.includes('स्लिप डिस्क') || q.includes('spine') || q.includes('पीठ')) {
+    if (q.includes('कमर') || q.includes('back') || q.includes('kamar') || q.includes('disc') || q.includes('स्लिप डिस्क') || q.includes('spine') || q.includes('पीठ') || q.includes('l4') || q.includes('l5')) {
       if (isEnglish) {
-        return `💡 **1. Immediate Short Solution / Home Remedies (Back Pain & Slip Disc):**
-• **Hand Spine Acupressure Point:** Press the groove on the back of your hand between the ring finger and middle finger toward the wrist for 2 minutes with your thumb.
-• **Firm Bed & Gentle Cobra Stretch:** Avoid ultra-soft mattresses, rest on a firm bed with a pillow under your knees, and practice gentle cobra pose for 15-20 seconds.
+        return `❤️ **1. Empathetic Acknowledgment:**
+Lower back pain and slip disc can severely limit your posture and comfort. We empathize deeply with what you are going through.
 
-⚠️ **2. Important Caution:**
-${cautionText}
+🌿 **2. How Acupressure & Chiropractic Help:**
+Gentle chiropractic adjustment and meridian acupressure decompress the lumbar spine (L4-L5/S1), releasing pinched nerves and restoring spinal balance without surgery.
+
+💡 **3. Safe Home Relief Tip:**
+• **Hand Spine Reflex Point:** Press the groove on the back of your hand between the ring and middle fingers toward your wrist for 2 minutes.
+• Rest on a firm surface with a pillow placed under your knees to take pressure off your lower back.
 
 ${clinicFooter}`;
       }
       if (isHinglish) {
-        return `💡 **1. Immediate Short Solution / Home Remedies (Kamar Dard & Slip Disc):**
-• **Hand Spine Point:** Hath ke pichhle hisse par ring finger aur middle finger ke beech ki bone groove ko wrist ki taraf angoothe se 2 minute dabayein.
-• **Firm Bed Rest:** Bahut mulayam gadde se bachein, seedhe let kar ghutno ke neeche takiya rakhein aur halka cobra stretch karein.
+        return `❤️ **1. Hamari Sahanoobhuti:**
+Kamar dard aur slip disc ki wajah se uthne-baithne me hone wali pareshani hum samajhte hain.
 
-⚠️ **2. Important Caution:**
-${cautionText}
+🌿 **2. Acupressure & Chiropractic Ka Asar:**
+Chiropractic spine alignment aur acupressure se L4-L5 lumbar spine par dabi hui nas free hoti hai, jisse bina operation ke dard jad se theek hota hai.
+
+💡 **3. Turant Gharelu Upchar:**
+• **Hand Spine Point:** Hath ke pichhle hisse par ring finger aur middle finger ke beech ki line ko wrist ki taraf angoothe se 2 minute dabayein.
+• Seedhe letkar ghutno ke neeche takiya rakhein aur bahut soft gadde par na soyein.
 
 ${clinicFooter}`;
       }
-      return `💡 **1. तुरंत आराम के लिए 2 सरल उपाय / एक्यूप्रेशर बिंदु (Immediate Short Solution):**
-• **हैंड एक्यूप्रेशर पॉइंट:** हाथ के पिछले हिस्से पर रिंग फिंगर और मिडिल फिंगर के बीच की हड्डी को कलाई की ओर 2 मिनट अंगूठे से दबाएं।
-• **फर्म बेड रेस्ट व जेंटल कोबरा पोज:** अत्यधिक मुलायम गद्दे से बचें, समतल फर्म मैट्रेस या तख्त पर लेटें और घुटनों के नीचे तकिया रखें। पेट के बल लेटकर हाथों के सहारे छाती को 15-20 सेकंड हल्का ऊपर उठाएं (भुजंगासन)।
+      return `❤️ **1. सहानुभूतिपूर्ण समझ (Empathetic Care):**
+कमर दर्द और स्लिप डिस्क से होने वाली असहनीय तकलीफ को हम पूरी संवेदनशीलता से समझते हैं।
 
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-${cautionText}
+🌿 **2. एक्यूप्रेशर व काइरोप्रैक्टिक द्वारा प्राकृतिक समाधान:**
+काइरोप्रैक्टिक अलाइनमेंट और एक्यूप्रेशर L4-L5 व लंबर स्पाइन के दबाव को हटाकर दबी हुई नसों को खोलते हैं, जिससे बिना ऑपरेशन प्राकृतिक रूप से कमर का लचीलापन लौट आता है।
+
+💡 **3. तुरंत आराम के लिए सरल घरेलू उपाय:**
+• **हैंड स्पाइन एक्यूप्रेशर:** हाथ के पिछले भाग पर रिंग और मिडिल फिंगर के बीच की हड्डी वाली नाली को कलाई की ओर 2 मिनट अंगूठे से दबाएं।
+• फर्म गद्दे या तख्त पर लेटें और घुटनों के नीचे तकिया लगाकर कमर को सहारा दें।
 
 ${clinicFooter}`;
     }
 
     // 4. Cervical & Neck Pain / Frozen Shoulder
-    if (q.includes('गर्दन') || q.includes('सर्वाइकल') || q.includes('cervical') || q.includes('neck') || q.includes('कंधा') || q.includes('कंधे') || q.includes('shoulder')) {
+    if (q.includes('गर्दन') || q.includes('सर्वाइकल') || q.includes('cervical') || q.includes('neck') || q.includes('कंधा') || q.includes('कंधे') || q.includes('shoulder') || q.includes('gardan') || q.includes('jakdan')) {
       if (isEnglish) {
-        return `💡 **1. Immediate Short Solution / Home Remedies (Cervical & Neck Pain):**
-• **Thumb Acupressure Point:** Press the back of your thumb (cervical spine reflex meridian) with your other thumb for 2-3 minutes.
-• **Pillow Adjustment & Gentle Neck Rotation:** Remove thick pillows when sleeping and gently rotate your neck side-to-side and up-and-down without jerking.
+        return `❤️ **1. Empathetic Acknowledgment:**
+Neck stiffness, cervical pain, and shoulder radiation can make everyday focus exhausting. We are here to help.
 
-⚠️ **2. Important Caution:**
-${cautionText}
+🌿 **2. How Acupressure & Acupuncture Relieve Cervical:**
+Acupressure unblocks stiff trapezius muscles and cervical vertebrae meridians, reducing pressure on nerve roots and restoring full range of neck movement.
+
+💡 **3. Safe Home Relief Tip:**
+• **Thumb Meridian Point:** Firmly massage the back of your thumb (cervical spine reflex) with your opposite thumb for 2-3 minutes.
+• Avoid thick pillows when sleeping and perform slow, gentle neck rotations without jerking.
 
 ${clinicFooter}`;
       }
       if (isHinglish) {
-        return `💡 **1. Immediate Short Solution / Home Remedies (Cervical & Gardan Dard):**
-• **Thumb Acupressure Point:** Angoothe ke pichhle hisse ko doosre hath ke angoothe se 2-3 minute dabayein.
-• **Mota Takiya Hatayein:** Sote waqt mota takiya na lagayein aur gardan ko dheere-dheere stretch karein.
+        return `❤️ **1. Hamari Sahanoobhuti:**
+Gardan me dard, cervical ya kandhe ki jakdan se hone wali pareshani ko hum achhi tarah samajhte hain.
 
-⚠️ **2. Important Caution:**
-${cautionText}
+🌿 **2. Acupressure Ka Fayda:**
+Acupressure gardan aur kandhe ki stiff muscles ko relax karta hai aur cervical vertebrae par dabi nason ko bina dawa khole relief deta hai.
+
+💡 **3. Turant Gharelu Upchar:**
+• **Thumb Acupressure:** Dono hatho ke angoothe ke pichhle hisse ko doosre hath se 2-3 minute dabayein.
+• Sote waqt mota takiya hata dein aur gardan ko dheere-dheere aage-peeche stretch karein.
 
 ${clinicFooter}`;
       }
-      return `💡 **1. तुरंत आराम के लिए 2 सरल उपाय / एक्यूप्रेशर बिंदु (Immediate Short Solution):**
-• **अंगूठे का एक्यूप्रेशर पॉइंट:** हाथ के अंगूठे के पीछे वाले भाग (गर्दन का मेरिडियन) को दूसरे हाथ के अंगूठे से 2-3 मिनट दबाएं।
-• **मोटा तकिया हटाएं व जेंटल नेक स्ट्रेच:** सोते समय बहुत मोटे तकिए का प्रयोग बंद करें और गर्दन को धीरे-धीरे दाएं-बाएं और ऊपर-नीचे घुमाएं, कभी भी झटका न दें।
+      return `❤️ **1. सहानुभूतिपूर्ण समझ (Empathetic Care):**
+गर्दन में दर्द, सर्वाइकल और कंधे की जकड़न से सिर और बांहों तक होने वाली परेशानी को हम समझते हैं।
 
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-${cautionText}
+🌿 **2. एक्यूप्रेशर द्वारा प्राकृतिक समाधान:**
+एक्यूप्रेशर और एक्यूपंक्चर गर्दन की जकड़ी हुई मांसपेशियों को शिथिल करते हैं और सर्वाइकल वर्टिब्रे की दबी हुई नसों में रक्त प्रवाह शुरू कर दर्द को जड़ से समाप्त करते हैं।
+
+💡 **3. तुरंत आराम के लिए सरल घरेलू उपाय:**
+• **अंगूठे का एक्यूप्रेशर:** दोनों हाथों के अंगूठे के पिछले भाग को दूसरे हाथ के अंगूठे से 2-3 मिनट दबाएं।
+• सोते समय मोटा तकिया तुरंत हटाएं और गर्दन को बिना झटका दिए धीरे-धीरे स्ट्रेच करें।
 
 ${clinicFooter}`;
     }
 
-    // 5. Sciatica / Tingling & Numbness
-    if (q.includes('साइटिका') || q.includes('sciatica') || q.includes('झनझनाहट') || q.includes('सुन्न') || q.includes('tingling') || q.includes('numbness') || q.includes('khinchav')) {
+    // 5. Sciatica & Leg Pain / Tingling / Numbness
+    if (q.includes('साइटिका') || q.includes('sciatica') || q.includes('झनझनाहट') || q.includes('सुन्न') || q.includes('tingling') || q.includes('numbness') || q.includes('khinchav') || q.includes('pair') || q.includes('पैर') || q.includes('leg') || q.includes('tang') || q.includes('टांग')) {
       if (isEnglish) {
-        return `💡 **1. Immediate Short Solution / Home Remedies (Sciatica & Tingling):**
-• **Heel & Sole Acupressure:** Press the pressure indentations around the inner and outer edge of your heel for 2 minutes with moderate pressure.
-• **Pillow Elevation & Fomentation:** Lie on your back with a pillow supporting under your knees to ease sciatic nerve tension, and apply warm fomentation from lower hip to thigh for 10 minutes.
+        return `❤️ **1. Empathetic Acknowledgment:**
+We are so sorry you are experiencing leg pain, sciatica, or tingling/numbness. Sciatic nerve pain can be deeply distressing.
 
-⚠️ **2. Important Caution:**
-${cautionText}
+🌿 **2. How Acupressure Relieves Sciatica & Leg Pain:**
+Acupressure stimulates reflex points along the urinary bladder and gall bladder meridians, relieving deep compression on the sciatic nerve and restoring normal sensations without pills.
+
+💡 **3. Safe Home Relief Tip:**
+• **Heel & Sole Acupressure:** Press the pressure indentations along the inner and outer edges of your heel for 2 minutes.
+• Rest with a pillow supporting under your knees to take tension off the sciatic nerve, and apply warm fomentation from lower hip to thigh.
 
 ${clinicFooter}`;
       }
       if (isHinglish) {
-        return `💡 **1. Immediate Short Solution / Home Remedies (Sciatica & Sunnpan):**
-• **Heel & Sole Point:** Edi ke dono kinaron ke gaddhon ko 2 minute angoothe se halka dabayein.
-• **Pillow Support & Senk:** Ghutno ke neeche takiya rakhkar letien aur kamar se pair tak 10 minute gunguni senk karein.
+        return `❤️ **1. Hamari Sahanoobhuti:**
+Pair me dard, sciatica, khinchav ya sunnpan hone par chalne me bohot takleef hoti hai, hum ise samajhte hain.
 
-⚠️ **2. Important Caution:**
-${cautionText}
+🌿 **2. Acupressure Sciatica Ko Kaise Theek Karta Hai:**
+Acupressure sciatic nerve par hone wale pressure ko release karta hai aur pair ki nason me blood circulation theek karta hai, jisse jhanjhanahat aur dard khatam hota hai.
+
+💡 **3. Turant Gharelu Upchar:**
+• **Heel & Sole Point:** Edi ke dono kinaron ke gaddhon ko 2 minute angoothe se dabayein.
+• Ghutno ke neeche takiya rakhkar letien aur kamar se jaangh tak 10 minute gunguni senk karein.
 
 ${clinicFooter}`;
       }
-      return `💡 **1. तुरंत आराम के लिए 2 सरल उपाय / एक्यूप्रेशर बिंदु (Immediate Short Solution):**
-• **तलवे व एड़ी का एक्यूप्रेशर:** एड़ी के अंदरूनी व बाहरी किनारे पर 1-2 मिनट हल्का दबाव दें।
-• **पैर को सहारा व सिंकाई:** पीठ के बल लेटते समय घुटने के नीचे तकिया रखें ताकि नसों पर खिंचाव न पड़े और 10-15 मिनट गुनगुनी सिकाई करें।
+      return `❤️ **1. सहानुभूतिपूर्ण समझ (Empathetic Care):**
+हम समझते हैं कि पैरों में दर्द, साइटिका, सुन्नपन या खिंचाव के कारण चलना-फिरना कितना कठिन हो जाता है।
 
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-${cautionText}
+🌿 **2. साइटिका व पैर दर्द का एक्यूप्रेशर समाधान:**
+एक्यूप्रेशर कमर से लेकर एड़ी तक जाने वाली साइटिका नर्व के दबाव को मुक्त करता है। मेरिडियन पॉइंट्स पर मैग्नेट व टच द्वारा नसों का ब्लॉकेज बिना दवा व बिना सर्जरी खुल जाता है।
+
+💡 **3. तुरंत आराम के लिए सरल घरेलू उपाय:**
+• **एड़ी व तलवे का एक्यूप्रेशर:** एड़ी के दोनों किनारों के गड्ढों को अंगूठे से 2 मिनट हल्के दबाव के साथ दबाएं।
+• घुटनों के नीचे तकिया रखकर लेटें ताकि साइटिक नर्व पर खिंचाव न पड़े, और जांघ से पिंडलियों तक गुनगुनी सिकाई करें।
 
 ${clinicFooter}`;
     }
 
-    // 6. Sprain & Bone Related Issues
+    // 6. Paralysis & Stroke Rehabilitation
+    if (q.includes('लकवा') || q.includes('paralysis') || q.includes('stroke') || q.includes('पक्षाघात') || q.includes('lakwa')) {
+      if (isEnglish) {
+        return `❤️ **1. Empathetic Acknowledgment:**
+Paralysis and stroke rehabilitation require immense patience and compassion. We stand by you and your family.
+
+🌿 **2. How Acupuncture & Acupressure Restore Mobility:**
+Sterile micro-acupuncture and specialized meridian neuro-acupressure activate dormant motor pathways, stimulate cerebral circulation, and help retrain limb reflexes without chemicals.
+
+💡 **3. Safe Home Relief Tip:**
+• Gently massage the patient's palms, fingers, and soles in upward circular motions with warm sesame oil to stimulate peripheral nerve sensations.
+• Keep the affected limbs warm and properly supported.
+
+${clinicFooter}`;
+      }
+      if (isHinglish) {
+        return `❤️ **1. Hamari Sahanoobhuti:**
+Lakwa (paralysis) ya stroke ke baad aane wali takleef me patient aur family ko bohot sahas ki zaroorat hoti hai.
+
+🌿 **2. Acupressure & Acupuncture Ka Fayda:**
+Acupuncture aur Acupressure supt (dormant) nason aur motor nerves ko dobara activate karte hain, jisse haath-pair ki movement aur taakat wapas aane lagti hai.
+
+💡 **3. Turant Gharelu Upchar:**
+• Mareez ke haath aur pair ke talwo par gungune tel se upar ki disha me halki malish karein.
+• Paralyzed hisse ko hamesha gunguna aur support par rakhein.
+
+${clinicFooter}`;
+      }
+      return `❤️ **1. सहानुभूतिपूर्ण समझ (Empathetic Care):**
+लकवा (पक्षाघात) या स्ट्रोक के बाद की स्थिति में मरीज और परिजनों को बहुत धैर्य और सही मार्गदर्शन की आवश्यकता होती है।
+
+🌿 **2. एक्यूपंक्चर एवं न्यूरो-एक्यूप्रेशर द्वारा पुनर्वास:**
+एक्यूपंक्चर और एक्यूप्रेशर सुप्त (शांत) नसों और मस्तिष्क के मोटर पाथवे को सक्रिय करते हैं। इससे हाथ-पैरों की शक्ति, संवेदनशीलता और गतिशीलता बिना किसी दवा के वापस लौटने लगती है।
+
+💡 **3. तुरंत उपयोगी देखभाल उपाय:**
+• मरीज के हाथों की हथेलियों, उंगलियों और तलवों पर हल्के गुनगुने तेल से ऊपर की दिशा में हल्की मालिश करें।
+• प्रभावित अंगों को ठंड से बचाएं और उचित सहारा देकर रखें।
+
+${clinicFooter}`;
+    }
+
+    // 7. Sprain & Bone / Ligament Issues
     if (q.includes('मोच') || q.includes('हड्डी') || q.includes('sprain') || q.includes('bone') || q.includes('moch') || q.includes('twist') || q.includes('ligament')) {
       if (isEnglish) {
-        return `💡 **1. Immediate Short Solution / Home Remedies (Sprain & Bone Issues):**
-• **R.I.C.E. Technique:** Apply an ice pack wrapped in a cloth to the sprained area for 10-15 minutes and rest the joint completely.
-• **Elevation & Support:** Rest the sprained limb elevated on a pillow to reduce swelling, and gently support with a crepe bandage (never jerk or crack the joint).
+        return `❤️ **1. Empathetic Acknowledgment:**
+Sprains and sudden bone/ligament twists can cause sudden sharp pain and swelling. We understand your discomfort.
 
-⚠️ **2. Important Caution:**
-${cautionText}
+🌿 **2. How Acupressure & Kinesiology Taping Help:**
+Targeted pressure relieves lymphatic congestion, reduces swelling, and stabilizes strained ligaments for speedy, drugless recovery.
+
+💡 **3. Safe Home Relief Tip:**
+• Elevate the affected limb and apply cold fomentation for the first 24 hours to reduce acute swelling. Avoid putting heavy weight on it.
 
 ${clinicFooter}`;
       }
       if (isHinglish) {
-        return `💡 **1. Immediate Short Solution / Home Remedies (Moch & Haddi):**
-• **Barf Ki Senk:** Moch wale hisse par turant barf ki senk karein (10-15 minute) aur poora aaram dein.
-• **Elevation & Bandage:** Sote waqt takiya lagakar ang ko thoda upar rakhein aur crepe bandage se halka support dein.
+        return `❤️ **1. Hamari Sahanoobhuti:**
+Moch ya ligament ke khinchne se achanak hone wale tez dard aur soojan ko hum samajhte hain.
 
-⚠️ **2. Important Caution:**
-${cautionText}
+🌿 **2. Acupressure Ka Asar:**
+Acupressure aur Kinesiology taping se soojan turant kam hoti hai aur ligament bina dawai natural tarike se heal hota hai.
+
+💡 **3. Turant Gharelu Upchar:**
+• Pair ya hath ko uncha rakhein aur pehle 24 ghante barf/thandi senk karein. Is par zyada wajan na daalein.
 
 ${clinicFooter}`;
       }
-      return `💡 **1. तुरंत आराम के लिए 2 सरल उपाय (Immediate Short Solution):**
-• **R.I.C.E. तकनीक:** मोच वाले हिस्से पर तुरंत बर्फ की सिकाई करें (10-15 मिनट) और अंग को पूरा आराम दें।
-• **एलिवेशन (ऊंचाई) व सपोर्ट:** सोते समय मोच वाले पैर या हाथ के नीचे तकिया रखें ताकि सूजन न बढ़े और क्रेप बैंडेज से हल्का सहारा दें (झटके से न चटकाएं)।
+      return `❤️ **1. सहानुभूतिपूर्ण समझ (Empathetic Care):**
+मोच, लिगामेंट खिंचाव या हड्डी की चोट से होने वाले अचानक दर्द और सूजन की परेशानी को हम समझते हैं।
 
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-${cautionText}
+🌿 **2. एक्यूप्रेशर द्वारा समाधान:**
+एक्यूप्रेशर और काइनेसियोलॉजी टेपिंग लिगामेंट के तनाव को कम कर सूजन व दर्द को तुरंत शांत करते हैं, जिससे सामान्य गतिशीलता तेजी से लौटती है।
+
+💡 **3. तुरंत आराम के लिए सरल घरेलू उपाय:**
+• चोट वाले स्थान को ऊंचाई पर रखें और पहले 24 घंटे ठंडी सिंकाई (बर्फ) करें। उस पर भारी वजन न डालें।
 
 ${clinicFooter}`;
     }
 
-    // 7. Pinched Nerve & Nerve Compression
+    // 8. Pinched Nerve & Blockage
     if (q.includes('नस') || q.includes('दबी') || q.includes('ब्लॉकेज') || q.includes('nerve') || q.includes('pinched') || q.includes('nas')) {
       if (isEnglish) {
-        return `💡 **1. Immediate Short Solution / Home Remedies (Pinched Nerve & Blockage):**
-• **Warm & Cool Compress:** Apply 10 minutes of warm fomentation followed by 5 minutes of cool compress to reduce nerve inflammation.
-• **Posture & Gentle Stretch:** Avoid sudden heavy lifting, maintain an ergonomic posture, and practice gentle stretching without jerking.
+        return `❤️ **1. Empathetic Acknowledgment:**
+Pinched nerves can cause burning pain, numbness, and sharp discomfort along the limbs. We are here to assist.
 
-⚠️ **2. Important Caution:**
-${cautionText}
+🌿 **2. How Acupressure Frees Pinched Nerves:**
+Acupressure clears neuromuscular congestion and unblocks pinched nerve pathways through diagnostic touch and meridian magnets, restoring continuous blood flow.
 
-${clinicFooter}`;
-      }
-      if (isHinglish) {
-        return `💡 **1. Immediate Short Solution / Home Remedies (Dabi Nas & Blockage):**
-• **Garam & Thandi Senk:** 10 minute gunguni senk ke baad 5 minute thandi senk karne se naso ki sujan kam hoti hai.
-• **Posture Ka Dhyan:** Galat posture se bachein aur achanak bhari wajan na uthayein.
-
-⚠️ **2. Important Caution:**
-${cautionText}
-
-${clinicFooter}`;
-      }
-      return `💡 **1. तुरंत आराम के लिए 2 सरल उपाय (Immediate Short Solution):**
-• **वार्म एंड कूल कंप्रेस:** 10 मिनट गुनगुनी सिंकाई के बाद 5 मिनट ठंडी सिंकाई करने से नसों की सूजन कम होती है।
-• **दबाव से बचाव:** जिस अंग में नस दबी महसूस हो, उस पर ज्यादा वजन या गलत पोस्चर न बनाएं और हल्का जेंटल स्ट्रेच दें।
-
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-${cautionText}
-
-${clinicFooter}`;
-    }
-
-    // 8. Cerebral Palsy (CP Child) & Delayed Walking
-    if (q.includes('सीपी') || q.includes('चाइल्ड') || q.includes('cp child') || q.includes('cerebral') || q.includes('बच्च') || q.includes('walking')) {
-      if (isEnglish) {
-        return `💡 **1. Immediate Home Care (Cerebral Palsy & Delayed Walking):**
-• **Gentle Limb Massage:** Gently massage the child's legs and feet with warm sesame or olive oil twice daily.
-• **Supportive Standing Practice:** Hold the child securely and practice supported standing and foot-placement exercises for 10-15 minutes daily.
-
-⚠️ **2. Important Caution:**
-${cautionText}
+💡 **3. Safe Home Relief Tip:**
+• Apply 10 minutes of gentle warm fomentation followed by resting without putting heavy strain or awkward pressure on the affected nerve.
 
 ${clinicFooter}`;
       }
       if (isHinglish) {
-        return `💡 **1. Immediate Home Care (CP Child & Walking Therapy):**
-• **Gentle Tel Malish:** Bachho ke pairon ki gungune til ya olive oil se halki malish karein.
-• **Standing Practice:** Bachhe ko sahara dekar seedha khade hone ka 10-15 minute roz abhyas karayein.
+        return `❤️ **1. Hamari Sahanoobhuti:**
+Dabi hui nas ki wajah se aane wale dard aur sunnpan ko hum samajhte hain.
 
-⚠️ **2. Important Caution:**
-${cautionText}
+🌿 **2. Acupressure Dabi Nas Ko Kaise Kholta Hai:**
+Acupressure aur magnetic therapy dabi hui naso ke blockage ko bina surgery ya dawai ke natural tarike se release karti hai.
+
+💡 **3. Turant Gharelu Upchar:**
+• 10 minute gunguni senk karein aur us ang par achanak zyada wajan ya galat posture na banayein.
 
 ${clinicFooter}`;
       }
-      return `💡 **1. बच्चों के लिए घरेलू देखभाल (Immediate Home Care):**
-• **जेंटल लिम्ब मसाज:** बच्चों के पैरों और पंजों की गुनगुने तिल/जैतून तेल से सौम्य मालिश करें।
-• **सपोर्टिव स्टैंडिंग प्रैक्टिस:** बच्चे को दोनों हाथों से पकड़कर सीधे खड़े होने और पैर टिकाने का रोज 10-15 मिनट अभ्यास कराएं।
+      return `❤️ **1. सहानुभूतिपूर्ण समझ (Empathetic Care):**
+शरीर में कहीं भी नस दबने या ब्लॉकेज से होने वाले दर्द, झनझनाहट और भारीपन की समस्या को हम समझते हैं।
 
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-${cautionText}
+🌿 **2. एक्यूप्रेशर द्वारा नसों का प्राकृतिक उपचार:**
+एक्यूप्रेशर और मैग्नेट थैरेपी दबी हुई नसों के संकुचन को खोलकर सामान्य रक्त संचार बहाल करते हैं, जिससे बिना ऑपरेशन नसों का ब्लॉकेज खुल जाता है।
+
+💡 **3. तुरंत आराम के लिए सरल घरेलू उपाय:**
+• 10 मिनट गुनगुनी सिंकाई करें और जिस अंग में नस दबी हो उस पर अत्यधिक दबाव न डालें।
 
 ${clinicFooter}`;
     }
 
-    // 9. Constipation & Digestion
+    // 9. Constipation & Digestive issues
     if (q.includes('कब्ज') || q.includes('constipation') || q.includes('pet') || q.includes('gas') || q.includes('अपच') || q.includes('acidity') || q.includes('एसिडिटी')) {
       if (isEnglish) {
-        return `💡 **1. Immediate Short Solution / Home Remedies (Constipation & Digestion):**
-• **Palm Acupressure Point (Digestive Center):** Press the center of both palms with your thumb in clockwise circular motions for 2 minutes.
-• **Warm Water & Navel Massage:** Drink 2 glasses of warm water in the morning and gently massage around your navel in a clockwise direction for 5 minutes.
+        return `❤️ **1. Empathetic Acknowledgment:**
+Chronic constipation, gas, and digestive distress can make your entire body feel uncomfortable and heavy.
 
-⚠️ **2. Important Caution:**
-${cautionText}
+🌿 **2. How Acupressure Helps Digestive Health:**
+Stimulating abdominal reflex points on the palms and feet regulates gut peristalsis and balances stomach meridian energy without laxative dependency.
 
-${clinicFooter}`;
-      }
-      if (isHinglish) {
-        return `💡 **1. Immediate Short Solution / Home Remedies (Kabz & Digestion):**
-• **Palm Digestion Point:** Hatheli ke bilkul beech wale hisse ko angoothe se clockwise 2 minute dabayein.
-• **Gunguna Paani & Nabhi Massage:** 2 glass gunguna paani piyein aur nabhi ke charo taraf halke hath se circular massage karein.
-
-⚠️ **2. Important Caution:**
-${cautionText}
-
-${clinicFooter}`;
-      }
-      return `💡 **1. तुरंत आराम के लिए 2 सरल उपाय / एक्यूप्रेशर बिंदु (Immediate Short Solution):**
-• **हथेली का एक्यूप्रेशर:** हथेली के बीच के पाचन बिंदु को अंगूठे से 2 मिनट क्लॉकवाइज दबाएं।
-• **सुबह गुनगुना पानी व नाभि मसाज:** सुबह खाली पेट 2 गिलास गुनगुना पानी पिएं और नाभि के चारों ओर क्लॉकवाइज हल्के हाथ से मालिश करें।
-
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-${cautionText}
-
-${clinicFooter}`;
-    }
-
-    // 10. Paralysis & Stroke
-    if (q.includes('लकवा') || q.includes('paralysis') || q.includes('stroke') || q.includes('पक्षाघात')) {
-      if (isEnglish) {
-        return `💡 **1. Immediate Home Care (Paralysis & Stroke Rehabilitation):**
-• **Gentle Passive Range of Motion:** Gently bend and straighten the fingers and joints of affected limbs 3-4 times daily.
-• **Warm Oil Massage & Meridian Touch:** Massage upwards towards the heart with warm sesame oil and gently stimulate fingertips and toes.
-
-⚠️ **2. Important Caution:**
-${cautionText}
+💡 **3. Safe Home Relief Tip:**
+• **Palm Digestion Center:** Press the exact center of both palms with your thumb in clockwise circular motions for 2 minutes.
+• Drink 2 glasses of warm water and take a gentle 10-minute walk.
 
 ${clinicFooter}`;
       }
       if (isHinglish) {
-        return `💡 **1. Immediate Home Care (Lakwa & Paralysis Care):**
-• **Finger & Limb Movement:** Prabhavit hath-pairon ki ungliyo ko din me 3-4 baar dheere se seedha aur modein.
-• **Gunguna Tel Malish:** Til ke tel se neeche se upar ki disha me halki malish karein.
+        return `❤️ **1. Hamari Sahanoobhuti:**
+Kabz, gas ya pet me dard ki wajah se aane wali bechaini ko hum samajhte hain.
 
-⚠️ **2. Important Caution:**
-${cautionText}
+🌿 **2. Acupressure Ka Asar:**
+Acupressure pet ke digestive points ko stimulate karta hai jisse bina kisi churna ya dawa ke pet natural tarike se saaf hota hai.
+
+💡 **3. Turant Gharelu Upchar:**
+• **Palm Point:** Hatheli ke theek beech wale hisse ko angoothe se clockwise 2 minute dabayein.
+• 2 glass gunguna paani piyein aur 10 minute tahlne ki aadat daalein.
 
 ${clinicFooter}`;
       }
-      return `💡 **1. घर पर तुरंत देखभाल के 2 उपाय (Immediate Home Care):**
-• **निष्क्रिय अंगों की जेंटल मूवमेंट:** प्रभावित हाथ-पैरों की उंगलियों को दिन में 3-4 बार सीधा और मोड़ें।
-• **गुनगुना तेल मालिश व पोरों का दबाव:** तिल के तेल से नीचे से ऊपर की दिशा में हल्की मालिश करें और हाथ-पैरों के सबसे ऊपरी पोरों को हल्के से दबाएं।
+      return `❤️ **1. सहानुभूतिपूर्ण समझ (Empathetic Care):**
+कब्ज, गैस, एसिडिटी या पेट की समस्याओं से पूरा शरीर भारी और असहज हो जाता है, इसे हम समझते हैं।
 
-⚠️ **2. ज़रूरी सावधानी (Important Caution):**
-${cautionText}
+🌿 **2. एक्यूप्रेशर द्वारा पाचन सुधार:**
+एक्यूप्रेशर आंतों के प्राकृतिक संकुचन (Peristalsis) को सक्रिय करता है, जिससे बिना किसी चूर्ण या दवा के पेट प्राकृतिक रूप से साफ होता है।
+
+💡 **3. तुरंत आराम के लिए सरल घरेलू उपाय:**
+• **हथेली का पाचन बिंदु:** दोनों हथेलियों के बिल्कुल मध्य भाग को अंगूठे से 2 मिनट क्लॉकवाइज घुमाते हुए दबाएं।
+• 2 गिलास गुनगुना पानी पिएं और 10 मिनट टहलें।
 
 ${clinicFooter}`;
     }
@@ -819,7 +837,7 @@ ${clinicFooter}`;
       if (isEnglish) {
         return `Bindsukh Clinic Timings:
 • **Monday to Saturday:** 8:30 AM to 4:00 PM
-• **Sunday Morning:** 8:30 AM to 12:00 PM
+• **Sunday Morning:** 8:00 AM to 12:00 PM
 Feature: To avoid crowding, each 1-hour slot is strictly limited to 5 patients max.
 
 ${clinicFooter}`;
@@ -827,14 +845,14 @@ ${clinicFooter}`;
       if (isHinglish) {
         return `Bindsukh Clinic Timings:
 • **Monday se Saturday:** 8:30 AM se 4:00 PM
-• **Sunday Morning:** 8:30 AM se 12:00 PM
+• **Sunday Morning:** 8:00 AM se 12:00 PM
 Specialty: Bheed se bachne ke liye har 1 ghante ke slot me sirf 5 patients ko hi book kiya jata hai.
 
 ${clinicFooter}`;
       }
       return `क्लिनिक का समय (Clinic Timings):
 • **सोमवार से शनिवार:** सुबह 8:30 AM से शाम 4:00 PM तक
-• **रविवार (Sunday Morning):** सुबह 8:30 AM से दोपहर 12:00 PM तक
+• **रविवार (Sunday Morning):** सुबह 8:00 AM से दोपहर 12:00 PM तक
 नोट: हर 1 घंटे के स्लॉट में भीड़ से बचने के लिए अधिकतम 5 मरीजों को ही समय दिया जाता है।
 
 ${clinicFooter}`;
@@ -845,7 +863,7 @@ ${clinicFooter}`;
         return `Clinic Address & Location:
 **Bindsukh Acupressure & Acupuncture Center**
 Puramufti Purani Bazar, Near Puramufti Panchayat Bhawan, Prayagraj (UP) - 212208
-📞 Helpline / WhatsApp: +91 9455110097 / +91 9455100097
+📞 Helpline / WhatsApp: +91 9455100097 / +91 8423221799
 
 ${clinicFooter}`;
       }
@@ -853,59 +871,53 @@ ${clinicFooter}`;
         return `Clinic Ka Pata (Location):
 **Bindsukh Acupressure & Acupuncture Center**
 Puramufti Purani Bazar, Near Puramufti Panchayat Bhawan, Prayagraj (UP) - 212208
-📞 Helpline / WhatsApp: +91 9455110097 / +91 9455100097
+📞 Helpline / WhatsApp: +91 9455100097 / +91 8423221799
 
 ${clinicFooter}`;
       }
       return `क्लिनिक का पता:
 **बिंदसुख एक्यूप्रेशर एवं एक्यूपंक्चर सेंटर**
 पुरामुफ्ती पुरानी बाजार, निकट पुरामुफ्ती पंचायत भवन, प्रयागराज (उ.प्र.) 212208
-📞 हेल्पलाइन / WhatsApp: +91 9455110097 / +91 9455100097
+📞 हेल्पलाइन / WhatsApp: +91 9455100097 / +91 8423221799
 
 ${clinicFooter}`;
     }
 
-    // Default Friendly Clinic Guide (instead of forcing LI4 points)
+    // Default Friendly Holistic Guide
     if (isEnglish) {
-      return `Hello! 🙏 I am the Bindsukh Care Assistant. How can I best assist you today?
+      return `❤️ **1. Empathetic Acknowledgment:**
+Thank you for reaching out to Bindsukh Care Assistant. We are here to listen and help you achieve natural, pain-free living.
 
-• **100% Drugless Therapies:** Acupressure, Acupuncture, Chiropractic, Cupping & Natural Magnet Therapy.
-• **Specialist:** Therapist Saurabh Prajapati (Master in Acupressure & Acupuncture)
-• **Consultation Fee:** ₹500 (1st Visit) / ₹200 (Follow-up)
-• **Timings:** Monday to Saturday 8:30 AM to 4:00 PM | Sunday Morning 8:30 AM to 12:00 PM
-• **Address:** Puramufti Purani Bazar, Prayagraj (Near Panchayat Bhawan)
-• **Helpline / WhatsApp:** +91 9455110097
+🌿 **2. 100% Drugless Holistic Healing:**
+At Bindsukh Acupressure & Acupuncture Center, Therapist Saurabh Prajapati provides non-surgical relief for chronic joint, spine, and nerve disorders by clearing energy meridian blockages.
 
-Please let me know if you have pain or a specific condition (like Knee pain, Back pain, Sciatica, Cervical, Pinched nerve, Migraine, or Sprain) and I will provide immediate home care tips and appointment guidance!
+💡 **3. Quick Health Tip:**
+• Stay hydrated, maintain active posture, and avoid self-medicating with painkillers. Describe your specific symptom (e.g. knee pain, headache, back pain, sciatica) for targeted pressure point guidance!
 
 ${clinicFooter}`;
     }
 
     if (isHinglish) {
-      return `Namaste! 🙏 Main Bindsukh Care Assistant hoon. Main aapki kya madad kar sakta hoon?
+      return `❤️ **1. Hamari Sahanoobhuti:**
+Bindsukh Care Assistant se judne ke liye dhanyawad. Hum aapko natural aur dard-mukt jeevan jeene me madad karne ke liye tatpar hain.
 
-• **100% Drugless Therapies:** Acupressure, Acupuncture, Chiropractic & Magnet Therapy
-• **Specialist:** Therapist Saurabh Prajapati (Master in Acupressure & Acupuncture)
-• **Consultation Fee:** ₹500 (1st Visit) / ₹200 (Follow-up)
-• **Timings:** Monday se Saturday 8:30 AM se 4:00 PM | Sunday Morning 8:30 AM se 12:00 PM
-• **Address:** Puramufti Purani Bazar, Prayagraj
-• **Helpline:** +91 9455110097
+🌿 **2. 100% Drugless Holistic Ilaj:**
+Binduskh Center me Therapist Saurabh Prajapati bina kisi dawa ya operation ke nason aur jodo ke dard ka sthayi ilaj karte hain.
 
-Aap humein apni takleef ya dard (jaise ghutna dard, kamar dard, cervical, sciatica, dabi nas ya sir dard) ke baare me batayein, hum turant gharelu upchar aur clinic margdarshan pradan karenge!
+💡 **3. Swasthya Salah:**
+• Kripya humein apni takleef (jaise ghutne ka dard, kamar dard, cervical, sciatica ya sir dard) ke baare me batayein, hum turant sahi acupressure point aur upchar batayenge!
 
 ${clinicFooter}`;
     }
 
-    return `नमस्ते! 🙏 मैं बिंदसुख केयर असिस्टेंट हूँ। आज मैं आपकी क्या सहायता कर सकता हूँ?
+    return `❤️ **1. सहानुभूतिपूर्ण समझ (Empathetic Care):**
+बिंदसुख केयर असिस्टेंट से संपर्क करने के लिए धन्यवाद। हम आपको प्राकृतिक, बिना दवा और दर्द-मुक्त जीवन देने के लिए समर्पित हैं।
 
-• **100% प्राकृतिक पद्धतियाँ:** एक्यूप्रेशर, एक्यूपंक्चर, काइरोप्रैक्टिक व मैग्नेट थैरेपी
-• **विशेषज्ञ:** थेरेपिस्ट सौरभ प्रजापति (Master in Acupressure & Acupuncture)
-• **परामर्श शुल्क:** ₹500 (पहला परामर्श) / ₹200 (फॉलो-अप)
-• **समय:** सोमवार से शनिवार 8:30 AM से 4:00 PM | रविवार 8:30 AM से 12:00 PM
-• **पता:** पुरामुफ्ती पुरानी बाजार, प्रयागराज (निकट पंचायत भवन)
-• **हेल्पलाइन:** +91 9455110097
+🌿 **2. 100% ड्रगलेस प्राकृतिक चिकित्सा:**
+बिंदसुख सेंटर में थेरेपिस्ट सौरभ प्रजापति जी द्वारा घुटने, कमर, सर्वाइकल, साइटिका, दबी नस और जटिल दर्दों का बिना ऑपरेशन स्थायी उपचार किया जाता है।
 
-कृपया अपनी किसी भी शारीरिक परेशानी या दर्द (जैसे घुटने का दर्द, कमर दर्द, सर्वाइकल, साइटिका, दबी नस, सिरदर्द) के बारे में बताएं, हम आपको तुरंत उपयोगी घरेलू देखभाल व क्लिनिक परामर्श की जानकारी देंगे!
+💡 **3. स्वास्थ्य सलाह:**
+• कृपया अपनी विशिष्ट परेशानी (जैसे घुटने का दर्द, सिरदर्द, कमर दर्द, सर्वाइकल या साइटिका) बताएं, ताकि हम आपको तुरंत सटीक एक्यूप्रेशर बिंदु व परामर्श मार्गदर्शन दे सकें!
 
 ${clinicFooter}`;
   };

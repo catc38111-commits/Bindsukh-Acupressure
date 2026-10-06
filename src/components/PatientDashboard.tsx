@@ -861,9 +861,14 @@ export const PatientDashboard: React.FC<PatientDashboardProps> = ({
                             </span>
                           </div>
 
-                          <span className="text-sm font-black text-emerald-950 font-mono">
-                            ₹{apt.fee}
-                          </span>
+                          <div className="text-right">
+                            <span className="text-sm font-black text-emerald-950 font-mono">
+                              ₹{apt.fee || (apt.visitType === 'returning_patient' ? 200 : 500)}
+                            </span>
+                            <span className="block text-[9px] font-semibold text-slate-400">
+                              {apt.visitType === 'returning_patient' ? 'Returning' : '1st Visit'}
+                            </span>
+                          </div>
                         </div>
 
                         {/* Patient & Therapy details */}

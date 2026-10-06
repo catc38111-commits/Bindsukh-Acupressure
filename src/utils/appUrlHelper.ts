@@ -57,7 +57,7 @@ export function getAbsoluteApiUrl(endpointPath: string): string {
   if (typeof window !== 'undefined') {
     const origin = window.location.origin;
     if (origin && origin.startsWith('http') && !origin.includes('file://')) {
-      return `${origin}${path}`;
+      return path;
     }
   }
 
